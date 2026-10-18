@@ -1,5 +1,5 @@
 # VibeCR
 
 pnpm install;
-pnpm node server.js
+pnpm start
 -> http://localhost:3333
