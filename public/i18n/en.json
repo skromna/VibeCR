@@ -1,0 +1,192 @@
+{
+  "app": {
+    "title": "VibeCR",
+    "subtitle": "100% local code review (any language/framework) straight from your disk"
+  },
+  "nav": {
+    "branch": "Branch:",
+    "langToggle": "Toggle language (PL/EN)",
+    "themeToggle": "Toggle theme (light/dark)",
+    "themeLight": "Light mode",
+    "themeDark": "Dark mode",
+    "skipNav": "Skip links"
+  },
+  "a11y": {
+    "open": "Open accessibility settings",
+    "opened": "Accessibility settings (open)",
+    "region": "Accessibility settings",
+    "toggle": "Accessibility",
+    "fontUp": "Increase text size",
+    "fontDown": "Decrease text size",
+    "contrast": "Contrast",
+    "spacing": "Spacing",
+    "reset": "Reset",
+    "collapse": "Collapse",
+    "skipContent": "Skip to content",
+    "skipA11y": "Skip to accessibility settings"
+  },
+  "input": {
+    "repoPath": "Local project path",
+    "export": "Export",
+    "exportTitle": "Save project list to a JSON file",
+    "import": "Import",
+    "importTitle": "Load project list from a JSON file",
+    "browse": "Browse...",
+    "checkFolder": "Check folder",
+    "pathPlaceholder": "e.g. C:\\projects\\my-fullstack-app",
+    "addProject": "+ Add project",
+    "deleteShortcut": "Remove shortcut",
+    "deleteConfirm": "Remove shortcut “{label}”?\n{path}"
+  },
+  "scope": {
+    "label": "Analysis scope",
+    "diff": "Only my current changes (git diff)",
+    "all": "Entire application in this folder (any language/framework)"
+  },
+  "compare": {
+    "label": "Compare against branch",
+    "hint": "(optional for git diff)",
+    "placeholder": "Default: local uncommitted changes (or e.g. main)"
+  },
+  "tests": {
+    "include": "Include test files",
+    "patterns": "(*.test.*, *.spec.*, __tests__/, e2e/)"
+  },
+  "quality": {
+    "largeThreshold": "Large file threshold (lines):",
+    "hint": "Default: 400. AI also considers code quality standards."
+  },
+  "ai": {
+    "title": "AI model",
+    "hint": "(optional — Gemini, Claude, OpenCode Zen, OpenCode local, Ollama, LM Studio)",
+    "provider": "Provider",
+    "model": "Model",
+    "refreshModels": "(refresh from OpenCode)",
+    "modelPlaceholder": "e.g. gemini-2.5-flash or provider/model",
+    "baseUrl": "Base URL",
+    "baseUrlHint": "(only for custom / local)",
+    "apiKey": "API key",
+    "apiKeyHintLocal": "(empty for local)",
+    "apiKeyHintOpencode": "OPENCODE_SERVER_PASSWORD (empty for server started from VibeCR)",
+    "useAI": "Enhance report with AI analysis",
+    "useAIHint": "(code will be sent to the selected provider)",
+    "note": "Configuration (including the API key) is stored only in this browser’s <code>localStorage</code>. Requests to the provider go through the local VibeCR server on this computer (avoids browser blocks) and are not stored anywhere. Local models (Ollama / LM Studio) do not need a key.",
+    "providerGemini": "Google Gemini",
+    "providerClaude": "Anthropic Claude",
+    "providerOpenai": "OpenAI / OpenCode Zen (OpenAI-compatible)",
+    "providerOpencode": "OpenCode (local server)",
+    "providerOllama": "Ollama (local)",
+    "providerLmstudio": "LM Studio (local)"
+  },
+  "actions": {
+    "run": "Run code analysis",
+    "restore": "Restore removed",
+    "restoreTitle": "Restore all removed notes",
+    "copyAll": "Copy all notes",
+    "testConn": "Test connection",
+    "startOc": "Start OpenCode",
+    "stopOc": "Stop"
+  },
+  "report": {
+    "scanned": "Files scanned:",
+    "critical": "Critical",
+    "framework": "Framework",
+    "runtime": "Language & runtime",
+    "quality": "Code quality & standards",
+    "clearAll": "Remove all",
+    "clearSection": "Remove all notes in this section",
+    "remove": "Remove",
+    "removeTitle": "Remove this note from report",
+    "copyFix": "Copy fix",
+    "empty": "No issues detected in this category.",
+    "noIssues": "No issues detected.",
+    "copied": "Copied!",
+    "copyFixTitle": "Copy fix",
+    "heuristic": "heuristic",
+    "stack": "Detected stack: {languages}{frameworks}",
+    "stackUnknown": "unknown",
+    "stackFrameworks": " | frameworks: {list}",
+    "aiAdded": " | AI ({model}): +{count} notes from {files} files{truncated}",
+    "aiTruncated": " (truncated)",
+    "aiUnavailable": " | AI unavailable: {error}",
+    "branchNoCommits": "(no commits)",
+    "branchNoGit": "folder (no Git)",
+    "copyHeader": "# VibeCR report",
+    "copyProject": "Project: {path}",
+    "copyBranch": "Branch: {branch}",
+    "copyStack": "Detected stack: {stack}",
+    "copyScanned": "Files scanned: {count}",
+    "copyCounts": "Critical: {critical} | Framework: {framework} | Language & runtime: {runtime} | Code quality: {quality}",
+    "copyFile": "File: {file}",
+    "copyDesc": "Description: {desc}",
+    "copyFixLabel": "Fix:"
+  },
+  "git": {
+    "notRepo": "Folder is not a Git repository — analysis will cover the entire app (no change comparison).",
+    "connected": "Connected to repository. Current branch: {branch} (modified files: {count})"
+  },
+  "browser": {
+    "title": "Folder browser",
+    "close": "Close",
+    "currentPath": "Current path",
+    "go": "Go",
+    "usePath": "Use this path",
+    "addShortcut": "Add as shortcut",
+    "loading": "Loading...",
+    "empty": "No subfolders (or no read permission).",
+    "up": ".. (up)",
+    "shortcutName": "Shortcut name:",
+    "shortcutExists": "This shortcut already exists."
+  },
+  "footer": {
+    "licensed": "License:",
+    "author": "Author:"
+  },
+  "status": {
+    "heuristic": "Heuristic analysis...",
+    "aiRunning": "AI analysis ({provider}) — this may take a moment...",
+    "testing": "Testing...",
+    "fetchModels": "Fetching models from OpenCode...",
+    "modelsFound": "✓ Found {count} models — pick from the list or type manually (format: provider/model)",
+    "modelsEmpty": "Server returned no models.",
+    "modelsError": "✗ {error} — is the server running? (opencode serve --port 4096)",
+    "connected": "✓ Connected ({reply})",
+    "opencodeConnected": "✓ OpenCode {version} connected{port}{detected}",
+    "opencodeDetected": " — detected automatically",
+    "startingOc": "Starting OpenCode server (port 4096)...",
+    "ocAlreadyRunning": "✓ OpenCode server was already running on 4096 — testing connection...",
+    "ocStarted": "✓ Server started — testing connection...",
+    "ocStopped": "OpenCode server stopped.",
+    "ocNothingToStop": "No server to stop.",
+    "error": "✗ {error}"
+  },
+  "alerts": {
+    "needPath": "Paste a local project path first!",
+    "needApiKey": "AI analysis is enabled but no API key is set. Fill in the “AI model” section.",
+    "runFirst": "Run code analysis first!",
+    "importNone": "Imported 0 new projects — all ({count}) are already on the list.",
+    "importOk": "Imported {count} project(s).{skipped}",
+    "importSkipped": " Skipped duplicates: {count}.",
+    "importFail": "Import failed: {error}"
+  },
+  "errors": {
+    "fileTooLarge": "File is too large (256 KB limit).",
+    "invalidJson": "File is not valid JSON.",
+    "invalidStructure": "Invalid file structure — expected a project list.",
+    "noValidPaths": "File contains no valid project path.",
+    "noLocalServer": "No connection to the local VibeCR server — check that it is running. Details: {detail}",
+    "noProxyConnection": "No connection to {origin} (via local server) — check that the VibeCR server is running. Details: {detail}",
+    "noGeminiKey": "Missing Google AI Studio API key.",
+    "noClaudeKey": "Missing Anthropic API key.",
+    "opencodeNoContent": "OpenCode returned no content — check that a working model/provider is selected in OpenCode.",
+    "opencodeHttpSession": "OpenCode HTTP {status} while creating session{hint}",
+    "opencodeHttpPrompt": "OpenCode HTTP {status} on prompt",
+    "opencodePasswordHint": " (invalid OPENCODE_SERVER_PASSWORD)",
+    "opencodeModelError": "OpenCode: {message}",
+    "opencodeModelFallback": "model error",
+    "opencodeHealth": "OpenCode HTTP {status} — check port/password (opencode serve --port 4096)",
+    "authHint": " — invalid key/password (for OpenCode: OPENCODE_SERVER_PASSWORD)",
+    "httpEmpty": "{context} — HTTP {status} {statusText}{hint}",
+    "noConnectionPrefix": "No connection"
+  }
+}

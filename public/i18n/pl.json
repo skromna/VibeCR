@@ -1,0 +1,192 @@
+{
+  "app": {
+    "title": "VibeCR",
+    "subtitle": "100% lokalny przegląd kodu (dowolny język i framework) prosto z Twojego dysku"
+  },
+  "nav": {
+    "branch": "Branch:",
+    "langToggle": "Przełącz język (PL/EN)",
+    "themeToggle": "Przełącz motyw (jasny/ciemny)",
+    "themeLight": "Tryb jasny",
+    "themeDark": "Tryb ciemny",
+    "skipNav": "Nawigacja szybka"
+  },
+  "a11y": {
+    "open": "Otwórz ustawienia dostępności",
+    "opened": "Ustawienia dostępności (otwarte)",
+    "region": "Ustawienia dostępności",
+    "toggle": "Dostępność",
+    "fontUp": "Powiększ tekst",
+    "fontDown": "Pomniejsz tekst",
+    "contrast": "Kontrast",
+    "spacing": "Odstępy",
+    "reset": "Reset",
+    "collapse": "Zwiń",
+    "skipContent": "Przejdź do treści",
+    "skipA11y": "Przejdź do ustawień dostępności"
+  },
+  "input": {
+    "repoPath": "Ścieżka lokalna do projektu",
+    "export": "Eksportuj",
+    "exportTitle": "Zapisz listę projektów do pliku JSON",
+    "import": "Importuj",
+    "importTitle": "Wczytaj listę projektów z pliku JSON",
+    "browse": "Przeglądaj...",
+    "checkFolder": "Sprawdź folder",
+    "pathPlaceholder": "np. C:\\projekty\\moja-apka-fullstack",
+    "addProject": "+ Dodaj projekt",
+    "deleteShortcut": "Usuń skrót",
+    "deleteConfirm": "Usunąć skrót „{label}”?\n{path}"
+  },
+  "scope": {
+    "label": "Zakres analizy",
+    "diff": "Tylko moje obecne zmiany (git diff)",
+    "all": "Cała aplikacja w tym folderze (dowolny język i framework)"
+  },
+  "compare": {
+    "label": "Porównaj względem brancha",
+    "hint": "(opcjonalnie dla git diff)",
+    "placeholder": "Domyślnie: lokalne niezacommitowane zmiany (lub wpisz np. main)"
+  },
+  "tests": {
+    "include": "Uwzględnij pliki testowe",
+    "patterns": "(*.test.*, *.spec.*, __tests__/, e2e/)"
+  },
+  "quality": {
+    "largeThreshold": "Próg dużego pliku (linie):",
+    "hint": "Domyślnie: 400. AI też uwzględnia standardy jakości."
+  },
+  "ai": {
+    "title": "Model AI",
+    "hint": "(opcjonalnie — Gemini, Claude, OpenCode Zen, OpenCode lokalny, Ollama, LM Studio)",
+    "provider": "Dostawca",
+    "model": "Model",
+    "refreshModels": "(odśwież z OpenCode)",
+    "modelPlaceholder": "np. gemini-2.5-flash lub provider/model",
+    "baseUrl": "Base URL",
+    "baseUrlHint": "(tylko dla własnych / lokalnych)",
+    "apiKey": "Klucz API",
+    "apiKeyHintLocal": "(pusty dla lokalnych)",
+    "apiKeyHintOpencode": "hasło OPENCODE_SERVER_PASSWORD (puste dla serwera startowanego z VibeCR)",
+    "useAI": "Uzupełnij raport analizą AI",
+    "useAIHint": "(kod trafi do wybranego dostawcy)",
+    "note": "Konfiguracja (w tym klucz API) zapisywana jest wyłącznie w <code>localStorage</code> tej przeglądarki. Żądania do dostawcy przechodzą przez lokalny serwer VibeCR na tym komputerze (omija blokady przeglądarki) i nie są nigdzie zapisywane. Dla modeli lokalnych (Ollama / LM Studio) klucz nie jest potrzebny.",
+    "providerGemini": "Google Gemini",
+    "providerClaude": "Anthropic Claude",
+    "providerOpenai": "OpenAI / OpenCode Zen (zgodny z OpenAI)",
+    "providerOpencode": "OpenCode (lokalny serwer)",
+    "providerOllama": "Ollama (lokalny)",
+    "providerLmstudio": "LM Studio (lokalny)"
+  },
+  "actions": {
+    "run": "Uruchom analizę kodu",
+    "restore": "Przywróć usunięte",
+    "restoreTitle": "Przywróć wszystkie usunięte uwagi",
+    "copyAll": "Kopiuj wszystkie uwagi",
+    "testConn": "Test połączenia",
+    "startOc": "Uruchom OpenCode",
+    "stopOc": "Zatrzymaj"
+  },
+  "report": {
+    "scanned": "Przeskanowano plików:",
+    "critical": "Krytyczne",
+    "framework": "Framework",
+    "runtime": "Język i runtime",
+    "quality": "Jakość i standardy",
+    "clearAll": "Usuń wszystkie",
+    "clearSection": "Usuń wszystkie uwagi w tej sekcji",
+    "remove": "Usuń",
+    "removeTitle": "Usuń tę uwagę z raportu",
+    "copyFix": "Kopiuj poprawkę",
+    "empty": "Brak wykrytych problemów w tej kategorii.",
+    "noIssues": "Brak wykrytych problemów.",
+    "copied": "Skopiowano!",
+    "copyFixTitle": "Kopiuj poprawkę",
+    "heuristic": "heurystyka",
+    "stack": "Wykryty stos: {languages}{frameworks}",
+    "stackUnknown": "nieokreślony",
+    "stackFrameworks": " | frameworki: {list}",
+    "aiAdded": " | AI ({model}): +{count} uwag z {files} plików{truncated}",
+    "aiTruncated": " (przycięte)",
+    "aiUnavailable": " | AI niedostępne: {error}",
+    "branchNoCommits": "(brak commitów)",
+    "branchNoGit": "folder (bez Git)",
+    "copyHeader": "# Raport VibeCR",
+    "copyProject": "Projekt: {path}",
+    "copyBranch": "Branch: {branch}",
+    "copyStack": "Wykryty stos: {stack}",
+    "copyScanned": "Przeskanowano plików: {count}",
+    "copyCounts": "Krytyczne: {critical} | Framework: {framework} | Język i runtime: {runtime} | Jakość i standardy: {quality}",
+    "copyFile": "Plik: {file}",
+    "copyDesc": "Opis: {desc}",
+    "copyFixLabel": "Poprawka:"
+  },
+  "git": {
+    "notRepo": "Folder nie jest repozytorium Git — analiza obejmie całą aplikację (bez porównania zmian).",
+    "connected": "Połączono z repozytorium. Aktualny branch: {branch} (zmodyfikowanych plików: {count})"
+  },
+  "browser": {
+    "title": "Przeglądarka folderów",
+    "close": "Zamknij",
+    "currentPath": "Bieżąca ścieżka",
+    "go": "Idź",
+    "usePath": "Użyj tej ścieżki",
+    "addShortcut": "Dodaj jako skrót",
+    "loading": "Ładowanie...",
+    "empty": "Brak podfolderów (lub brak uprawnień do odczytu).",
+    "up": ".. (w górę)",
+    "shortcutName": "Nazwa skrótu:",
+    "shortcutExists": "Taki skrót już istnieje."
+  },
+  "footer": {
+    "licensed": "Licencja:",
+    "author": "Autor:"
+  },
+  "status": {
+    "heuristic": "Analiza heurystyczna...",
+    "aiRunning": "Analiza AI ({provider}) — to może chwilę potrwać...",
+    "testing": "Testowanie...",
+    "fetchModels": "Pobieranie modeli z OpenCode...",
+    "modelsFound": "✓ Znaleziono {count} modeli — wybierz z listy lub wpisz ręcznie (format: provider/model)",
+    "modelsEmpty": "Serwer nie zwrócił żadnych modeli.",
+    "modelsError": "✗ {error} — czy serwer działa? (opencode serve --port 4096)",
+    "connected": "✓ Połączono ({reply})",
+    "opencodeConnected": "✓ OpenCode {version} połączony{port}{detected}",
+    "opencodeDetected": " — wykryto automatycznie",
+    "startingOc": "Uruchamianie serwera OpenCode (port 4096)...",
+    "ocAlreadyRunning": "✓ Serwer OpenCode już działał na 4096 — testuję połączenie...",
+    "ocStarted": "✓ Serwer uruchomiony — testuję połączenie...",
+    "ocStopped": "Serwer OpenCode zatrzymany.",
+    "ocNothingToStop": "Brak serwera do zatrzymania.",
+    "error": "✗ {error}"
+  },
+  "alerts": {
+    "needPath": "Wklej najpierw lokalną ścieżkę do projektu!",
+    "needApiKey": "Włączono analizę AI, ale brak klucza API. Uzupełnij konfigurację w sekcji „Model AI”.",
+    "runFirst": "Najpierw uruchom analizę kodu!",
+    "importNone": "Zaimportowano 0 nowych projektów — wszystkie ({count}) są już na liście.",
+    "importOk": "Zaimportowano {count} projekt(ów).{skipped}",
+    "importSkipped": " Pominięto duplikaty: {count}.",
+    "importFail": "Import nieudany: {error}"
+  },
+  "errors": {
+    "fileTooLarge": "Plik jest za duży (limit 256 KB).",
+    "invalidJson": "Plik nie jest poprawnym JSON-em.",
+    "invalidStructure": "Nieprawidłowa struktura pliku — oczekiwano listy projektów.",
+    "noValidPaths": "Plik nie zawiera żadnej poprawnej ścieżki projektu.",
+    "noLocalServer": "Brak połączenia z lokalnym serwerem VibeCR — sprawdź, czy działa. Szczegóły: {detail}",
+    "noProxyConnection": "Brak połączenia z {origin} (przez lokalny serwer) — sprawdź, czy serwer VibeCR działa. Szczegóły: {detail}",
+    "noGeminiKey": "Brak klucza API Google AI Studio.",
+    "noClaudeKey": "Brak klucza API Anthropic.",
+    "opencodeNoContent": "OpenCode nie zwrócił treści — sprawdź, czy masz wybrany działający model/dostawcę w OpenCode.",
+    "opencodeHttpSession": "OpenCode HTTP {status} przy tworzeniu sesji{hint}",
+    "opencodeHttpPrompt": "OpenCode HTTP {status} przy promptcie",
+    "opencodePasswordHint": " (nieprawidłowe hasło OPENCODE_SERVER_PASSWORD)",
+    "opencodeModelError": "OpenCode: {message}",
+    "opencodeModelFallback": "błąd modelu",
+    "opencodeHealth": "OpenCode HTTP {status} — sprawdź port/hasło (opencode serve --port 4096)",
+    "authHint": " — nieprawidłowy klucz/hasło (dla OpenCode: OPENCODE_SERVER_PASSWORD)",
+    "httpEmpty": "{context} — HTTP {status} {statusText}{hint}",
+    "noConnectionPrefix": "Brak połączenia"
+  }
+}

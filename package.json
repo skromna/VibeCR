@@ -1,0 +1,12 @@
+{
+  "name": "vibecr",
+  "version": "1.0.0",
+  "description": "VibeCR - 100% lokalny przegląd kodu (dowolny język i framework)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.3.0"
+  }
+}

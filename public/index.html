@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>VibeCR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <nav class="skip-links" data-i18n-attr="aria-label|nav.skipNav" aria-label="Nawigacja szybka">
+    <a id="skip-to-content" href="#main-content">Przejdź do treści</a>
+    <a id="skip-to-a11y" href="#a11y-toolbar">Przejdź do ustawień dostępności</a>
+  </nav>
+
+  <div class="page">
+    <div class="page-inner">
+
+      <header class="page-header">
+        <div>
+          <h1>VibeCR</h1>
+          <p class="subtitle" data-i18n="app.subtitle">100% lokalny przegląd kodu (dowolny język i framework) prosto z Twojego dysku</p>
+        </div>
+        <div class="flex items-center gap-s10" style="flex-wrap: wrap; justify-content: flex-end;">
+          <button id="langToggleBtn" class="btn btn-subtle" style="font-size: 12px; padding: 5px 10px;" data-i18n-title="nav.langToggle" aria-label="Toggle language (PL/EN)" aria-pressed="false">PL</button>
+          <button id="themeToggleBtn" class="btn btn-subtle" style="font-size: 12px; padding: 5px 10px;" data-i18n-title="nav.themeToggle" aria-label="Toggle theme (light/dark)" aria-pressed="false">Tryb ciemny</button>
+          <div id="branchBadge" class="branch-badge" style="display: none;">
+            <span>&#127793;</span> <span data-i18n="nav.branch">Branch:</span> <span id="branchName"></span>
+          </div>
+        </div>
+      </header>
+
+      <main id="main-content" tabindex="-1">
+      <section class="card">
+        <label class="field-label" data-i18n="input.repoPath">Ścieżka lokalna do projektu</label>
+        <div class="flex" style="justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px;">
+          <div id="presetProjects" class="flex flex-wrap gap-s10" style="flex: 1 1 auto; min-width: 0;"></div>
+          <div class="flex gap-s5" style="flex: 0 0 auto; white-space: nowrap;">
+            <button type="button" id="exportProjectsBtn" class="btn btn-subtle" data-i18n="input.export" data-i18n-title="input.exportTitle" title="Zapisz listę projektów do pliku JSON">Eksportuj</button>
+            <button type="button" id="importProjectsBtn" class="btn btn-subtle" data-i18n="input.import" data-i18n-title="input.importTitle" title="Wczytaj listę projektów z pliku JSON">Importuj</button>
+            <input id="importProjectsFile" type="file" accept="application/json,.json" style="display: none;" />
+          </div>
+        </div>
+        <div class="flex gap-s10" style="align-items: stretch;">
+          <input
+            id="repoPathInput"
+            type="text"
+            value=""
+            data-i18n-placeholder="input.pathPlaceholder"
+            placeholder="np. C:\projekty\moja-apka-fullstack"
+            class="text-input mono"
+            style="flex: 1;"
+          />
+          <button id="openBrowserBtn" class="btn btn-subtle" style="white-space: nowrap;" data-i18n="input.browse">Przeglądaj...</button>
+          <button id="checkFolderBtn" class="btn btn-subtle" style="white-space: nowrap;" data-i18n="input.checkFolder">Sprawdź folder</button>
+        </div>
+        <p id="gitStatusText" class="status-ok" style="margin: 5px 0 0;"></p>
+
+        <div class="grid-2 scope-divider" style="margin-top: 20px; padding-top: 15px;">
+          <div>
+            <label class="field-label" data-i18n="scope.label">Zakres analizy</label>
+            <div class="flex flex-col gap-s5">
+              <label class="option-row">
+                <input type="radio" name="scope" value="diff" checked />
+                <span data-i18n="scope.diff">Tylko moje obecne zmiany (git diff)</span>
+              </label>
+              <label class="option-row">
+                <input type="radio" name="scope" value="all" />
+                <span data-i18n="scope.all">Cała aplikacja w tym folderze (dowolny język i framework)</span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label class="field-label">
+              <span data-i18n="compare.label">Porównaj względem brancha</span> <span class="field-hint" data-i18n="compare.hint">(opcjonalnie dla git diff)</span>
+            </label>
+            <input
+              id="compareBranchInput"
+              type="text"
+              data-i18n-placeholder="compare.placeholder"
+              placeholder="Domyślnie: lokalne niezacommitowane zmiany (lub wpisz np. main)"
+              class="text-input mono"
+              style="margin-bottom: 10px;"
+            />
+            <label class="option-row">
+              <input type="checkbox" id="includeTestsInput" />
+              <span data-i18n="tests.include">Uwzględnij pliki testowe</span> <span class="field-hint" data-i18n="tests.patterns">(<code>*.test.*</code>, <code>*.spec.*</code>, <code>__tests__/</code>, <code>e2e/</code>)</span>
+            </label>
+            <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
+              <label class="field-label" style="font-size: 12px; margin: 0;" data-i18n="quality.largeThreshold">Próg dużego pliku (linie):</label>
+              <input id="largeFileLinesInput" type="number" min="100" max="2000" step="50" class="text-input mono" style="width: 80px; padding: 4px 6px; font-size: 12px;" placeholder="400" />
+              <span class="field-hint" data-i18n="quality.hint">Domyślnie: 400. AI też uwzględnia standardy jakości.</span>
+            </div>
+          </div>
+        </div>
+
+        <details class="ai-config" style="margin-top: 15px;">
+          <summary>&#9889; <span data-i18n="ai.title">Model AI</span> <span class="field-hint" style="font-weight: 400;" data-i18n="ai.hint">(opcjonalnie — Gemini, Claude, OpenCode Zen, OpenCode lokalny, Ollama, LM Studio)</span></summary>
+          <div class="ai-config-body">
+            <div class="ai-grid">
+              <div>
+                <label class="field-label" data-i18n="ai.provider">Dostawca</label>
+                <select id="llmProvider" class="text-input">
+                  <option value="gemini" data-i18n="ai.providerGemini">Google Gemini</option>
+                  <option value="claude" data-i18n="ai.providerClaude">Anthropic Claude</option>
+                  <option value="openai" data-i18n="ai.providerOpenai">OpenAI / OpenCode Zen (zgodny z OpenAI)</option>
+                  <option value="opencode" data-i18n="ai.providerOpencode">OpenCode (lokalny serwer)</option>
+                  <option value="ollama" data-i18n="ai.providerOllama">Ollama (lokalny)</option>
+                  <option value="lmstudio" data-i18n="ai.providerLmstudio">LM Studio (lokalny)</option>
+                </select>
+              </div>
+              <div>
+                <label class="field-label"><span data-i18n="ai.model">Model</span>
+                  <button id="llmRefreshModels" type="button" data-i18n="ai.refreshModels" style="display: none; background: none; border: none; font-size: 11px; cursor: pointer; padding: 0; text-decoration: underline;">(odśwież z OpenCode)</button>
+                </label>
+                <input id="llmModel" type="text" class="text-input mono" list="llmModelList" data-i18n-placeholder="ai.modelPlaceholder" placeholder="np. gemini-2.5-flash lub provider/model" />
+                <datalist id="llmModelList"></datalist>
+              </div>
+              <div>
+                <label class="field-label"><span data-i18n="ai.baseUrl">Base URL</span> <span class="field-hint" data-i18n="ai.baseUrlHint">(tylko dla własnych / lokalnych)</span></label>
+                <input id="llmBaseUrl" type="text" class="text-input mono" placeholder="https://..." />
+              </div>
+              <div>
+                <label class="field-label"><span data-i18n="ai.apiKey">Klucz API</span> <span class="field-hint" id="apiKeyHint" data-i18n="ai.apiKeyHintLocal">(pusty dla lokalnych)</span></label>
+                <input id="llmApiKey" type="password" class="text-input mono" placeholder="sk-..." autocomplete="off" />
+              </div>
+            </div>
+            <div class="flex gap-s10 items-center" style="margin-top: 12px;">
+              <button id="testLLMBtn" class="btn btn-subtle" style="font-size: 12px; padding: 5px 10px;" data-i18n="actions.testConn">Test połączenia</button>
+              <button id="llmStartOpencode" type="button" class="btn btn-subtle" style="display: none; font-size: 12px; padding: 5px 10px;" data-i18n="actions.startOc">Uruchom OpenCode</button>
+              <button id="llmStopOpencode" type="button" class="btn btn-subtle" style="display: none; font-size: 12px; padding: 5px 10px;" data-i18n="actions.stopOc">Zatrzymaj</button>
+              <span id="llmTestStatus" class="field-hint"></span>
+            </div>
+            <label class="option-row" style="margin-top: 12px;">
+              <input type="checkbox" id="useAIInput" />
+              <span><span data-i18n="ai.useAI">Uzupełnij raport analizą AI</span> <span class="field-hint" data-i18n="ai.useAIHint">(kod trafi do wybranego dostawcy)</span></span>
+            </label>
+            <p class="ai-note" data-i18n-html="ai.note">
+              Konfiguracja (w tym klucz API) zapisywana jest wyłącznie w <code>localStorage</code> tej przeglądarki.
+              Żądania do dostawcy przechodzą przez lokalny serwer VibeCR na tym komputerze (omija blokady przeglądarki)
+              i nie są nigdzie zapisywane. Dla modeli lokalnych (Ollama / LM Studio) klucz nie jest potrzebny.
+            </p>
+          </div>
+        </details>
+
+        <button id="runBtn" class="btn btn-primary w-full" style="margin-top: 20px;" data-i18n="actions.run">Uruchom analizę kodu</button>
+      </section>
+
+      <section id="resultsSection" style="display: none;">
+        <div class="results-bar">
+          <div class="flex flex-col gap-s5" style="flex: 1 1 auto; min-width: 0;">
+            <span><span data-i18n="report.scanned">Przeskanowano plików:</span> <strong id="scannedCount">0</strong></span>
+            <span id="aiInfo" class="field-hint"></span>
+          </div>
+          <div class="flex gap-s10 items-center" style="flex-wrap: wrap;">
+            <button id="restoreIssuesBtn" class="btn btn-subtle" style="font-size: 12px; padding: 5px 10px;" data-i18n="actions.restore" data-i18n-title="actions.restoreTitle" title="Przywróć wszystkie usunięte uwagi">Przywróć usunięte</button>
+            <button id="copyAllBtn" class="btn btn-success" style="font-size: 12px; padding: 5px 10px;" data-i18n="actions.copyAll">Kopiuj wszystkie uwagi</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <div class="section-header">
+            <h2 id="titleCritical" data-i18n="report.critical">Krytyczne</h2>
+            <span id="countCritical" class="section-count count-critical">0</span>
+            <button type="button" data-clear-category="critical" class="section-clear-btn" data-i18n="report.clearAll" data-i18n-title="report.clearSection" title="Usuń wszystkie uwagi w tej sekcji">Usuń wszystkie</button>
+          </div>
+          <div id="listCritical" class="card" style="padding: 10px;"></div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <div class="section-header">
+            <h2 id="titleFramework" data-i18n="report.framework">Framework</h2>
+            <span id="countFramework" class="section-count count-framework">0</span>
+            <button type="button" data-clear-category="framework" class="section-clear-btn" data-i18n="report.clearAll" data-i18n-title="report.clearSection" title="Usuń wszystkie uwagi w tej sekcji">Usuń wszystkie</button>
+          </div>
+          <div id="listFramework" class="card" style="padding: 10px;"></div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <div class="section-header">
+            <h2 id="titleRuntime" data-i18n="report.runtime">Język i runtime</h2>
+            <span id="countRuntime" class="section-count count-runtime">0</span>
+            <button type="button" data-clear-category="runtime" class="section-clear-btn" data-i18n="report.clearAll" data-i18n-title="report.clearSection" title="Usuń wszystkie uwagi w tej sekcji">Usuń wszystkie</button>
+          </div>
+          <div id="listRuntime" class="card" style="padding: 10px;"></div>
+        </div>
+
+        <div>
+          <div class="section-header">
+            <h2 id="titleQuality" data-i18n="report.quality">Jakość i standardy</h2>
+            <span id="countQuality" class="section-count count-quality">0</span>
+            <button type="button" data-clear-category="quality" class="section-clear-btn" data-i18n="report.clearAll" data-i18n-title="report.clearSection" title="Usuń wszystkie uwagi w tej sekcji">Usuń wszystkie</button>
+          </div>
+          <div id="listQuality" class="card" style="padding: 10px;"></div>
+        </div>
+
+        <footer class="app-footer">
+          <div class="app-footer-inner">
+            <span class="license-info"><span data-i18n="footer.licensed">Licencja:</span> <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></span>
+            <span class="author-info"><span data-i18n="footer.author">Autor:</span> <a href="https://netbiznes.com/author.php?id=1" target="_blank" rel="noopener noreferrer">Sandra Madalińska-Piórkowska</a> | <a href="https://nurtprzemian.pl/dokumenty/cegielka" target="_blank" rel="noopener noreferrer">Fundacja Nurt Przemian</a></span>
+          </div>
+        </footer>
+      </section>
+      </main>
+
+    </div>
+  </div>
+
+  <div class="a11y-toolbar is-collapsed" id="a11y-toolbar" role="region" aria-label="Ustawienia dostępności" tabindex="-1">
+    <button type="button" class="a11y-toolbar-toggle" id="a11y-toggle" aria-expanded="false" aria-controls="a11y-toolbar-panel" aria-label="Otwórz ustawienia dostępności">
+      <span class="a11y-toolbar-toggle-icon" aria-hidden="true">A</span>
+      <span class="a11y-toolbar-toggle-text">Dostępność</span>
+    </button>
+    <div class="a11y-toolbar-panel" id="a11y-toolbar-panel" hidden>
+      <button type="button" id="a11y-font-up" aria-label="Powiększ tekst">A+</button>
+      <button type="button" id="a11y-font-down" aria-label="Pomniejsz tekst">A−</button>
+      <button type="button" id="a11y-contrast" aria-pressed="false">Kontrast</button>
+      <button type="button" id="a11y-spacing" aria-pressed="false">Odstępy</button>
+      <button type="button" id="a11y-reset">Reset</button>
+      <button type="button" id="a11y-collapse">Zwiń</button>
+    </div>
+  </div>
+
+  <div id="browserModal" class="modal-overlay" style="display: none;">
+    <div class="modal-window">
+      <div class="modal-header">
+        <strong data-i18n="browser.title">Przeglądarka folderów</strong>
+        <button id="browserCloseBtn" class="modal-close" data-i18n-title="browser.close" title="Zamknij">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label class="field-label" data-i18n="browser.currentPath">Bieżąca ścieżka</label>
+        <div class="flex gap-s10" style="margin-bottom: 10px;">
+          <input id="browserPathInput" type="text" class="text-input mono" style="flex: 1;" />
+          <button id="browseGoBtn" class="btn btn-subtle" data-i18n="browser.go">Idź</button>
+        </div>
+        <div id="browserList" class="browser-list"></div>
+        <p id="browserError" class="status-err" style="display: none;"></p>
+      </div>
+      <div class="modal-footer">
+        <button id="browseUseBtn" class="btn btn-primary" data-i18n="browser.usePath">Użyj tej ścieżki</button>
+        <button id="browseAddBtn" class="btn btn-subtle" data-i18n="browser.addShortcut">Dodaj jako skrót</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
