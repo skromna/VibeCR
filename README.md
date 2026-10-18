@@ -1,5 +1,6 @@
 # VibeCR
 
+Quick start:
 ```bash
 pnpm install;
 pnpm start
