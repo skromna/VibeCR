@@ -571,8 +571,25 @@ html.a11y-contrast :focus-visible {
   outline-offset: 3px;
 }
 
-.app-footer { margin-top: 15px; border-top: 1px solid var(--border); background: var(--panel); border-radius: 10px; box-shadow: 1px 5px 10px var(--shadow); }
-.app-footer-inner { padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; font-size: 0.75rem; color: var(--muted); }
+.app-footer {
+  margin-top: 30px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.app-footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.app-footer .license-info,
+.app-footer .author-info {
+  min-width: 0;
+}
 .app-footer a { color: var(--primary); text-decoration: none; }
 .app-footer a:hover { text-decoration: underline; }
 
