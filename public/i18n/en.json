@@ -56,6 +56,30 @@
     "largeThreshold": "Large file threshold (lines):",
     "hint": "Default: 400. AI also considers code quality standards."
   },
+  "reviewSettings": {
+    "title": "Code review settings",
+    "hint": "(heuristics and custom standards)",
+    "heuristicLabel": "Local heuristics",
+    "largeThreshold": "Large file threshold (lines):",
+    "largeHint": "Default: 400. Above this threshold a file-split suggestion is raised.",
+    "skipCss": "Do not suggest splitting CSS/SCSS/SASS/LESS files",
+    "standardsLabel": "Custom team standards / rules",
+    "standardsPlaceholder": "e.g. No TypeScript any; every endpoint must validate input; prefer early returns...",
+    "standardsHint": "Saved locally in data/review-settings.local.json.",
+    "exportStandards": "Export",
+    "importStandards": "Import",
+    "localSaved": "Saved locally: {at}",
+    "localLoaded": "Loaded local settings from disk: {at}",
+    "localSaveFailed": "Could not save settings to disk — kept in the browser only.",
+    "localSaveRestart": "Save endpoint missing — restart the VibeCR server (npm start), then refresh the page.",
+    "importOk": "Imported standards and CR settings.",
+    "importFailed": "Import failed: {error}",
+    "basePromptLabel": "Base AI prompt",
+    "basePromptReset": "Restore default",
+    "basePromptHint": "You are editing the template for the current UI language (PL/EN). Use placeholders: {{FILES_BLOCK}}, {{STANDARDS_BLOCK}}, {{LANGUAGE_NAME}}, {{QUALITY_EXTRA}}, {{FILE_HEADER_NOTE}}. If {{FILES_BLOCK}} is missing, files are appended at the end.",
+    "basePromptResetConfirm": "Restore the default AI prompt for the current language?"
+  },
+
   "ai": {
     "title": "AI model",
     "hint": "(optional — Gemini, Claude, OpenCode Zen, OpenCode local, Ollama, LM Studio)",

@@ -237,7 +237,6 @@ select.text-input { cursor: pointer; }
   padding: 1px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle;
 }
 .source-ai { background: var(--warn-bg); color: var(--warn-text); border: 1px solid var(--warn-border); }
-.source-heur { background: var(--primary-soft); color: var(--primary-hover); border: 1px solid var(--primary-border); }
 .empty-msg { font-size: 0.75rem; font-style: italic; color: var(--muted); background-color: var(--empty-bg); border: 1px dashed var(--empty-border); border-radius: 5px; padding: 10px; }
 .copy-fix-btn { white-space: nowrap; font-size: 0.75rem; padding: 5px 10px; }
 .dismiss-issue-btn { white-space: nowrap; font-size: 0.75rem; padding: 5px 10px; color: var(--danger); border-color: var(--danger-border); }
@@ -283,6 +282,17 @@ select.text-input { cursor: pointer; }
 .browser-item .folder-icon { color: var(--folder); }
 .browser-empty { padding: 15px; font-size: 0.75rem; font-style: italic; color: var(--muted); }
 
+.standards-textarea {
+  min-height: 110px;
+  resize: vertical;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+.base-prompt-textarea {
+  min-height: 220px;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 0.8125rem;
+}
 details.ai-config { border: 1px solid var(--border); border-radius: 5px; background: var(--empty-bg); color: var(--text); }
 details.ai-config summary {
   padding: 10px 15px; cursor: pointer; font-size: 0.8125rem; font-weight: 700; color: var(--text);

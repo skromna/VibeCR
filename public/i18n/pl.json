@@ -56,6 +56,30 @@
     "largeThreshold": "Próg dużego pliku (linie):",
     "hint": "Domyślnie: 400. AI też uwzględnia standardy jakości."
   },
+  "reviewSettings": {
+    "title": "Ustawienia code review",
+    "hint": "(heurystyka i własne standardy)",
+    "heuristicLabel": "Heurystyka lokalna",
+    "largeThreshold": "Próg dużego pliku (linie):",
+    "largeHint": "Domyślnie: 400. Powyżej progu pojawia się sugestia podziału pliku.",
+    "skipCss": "Nie sugeruj podziału dla plików CSS/SCSS/SASS/LESS",
+    "standardsLabel": "Własne standardy / reguły zespołu",
+    "standardsPlaceholder": "np. Zakaz any w TypeScript; każdy endpoint musi mieć walidację wejścia; preferuj early return...",
+    "standardsHint": "Zapisywane lokalnie w data/review-settings.local.json.",
+    "exportStandards": "Eksportuj",
+    "importStandards": "Importuj",
+    "localSaved": "Zapisano lokalnie: {at}",
+    "localLoaded": "Wczytano lokalne ustawienia z dysku: {at}",
+    "localSaveFailed": "Nie udało się zapisać ustawień na dysku — zostają tylko w przeglądarce.",
+    "localSaveRestart": "Brak endpointu zapisu — zrestartuj serwer VibeCR (npm start), potem odśwież stronę.",
+    "importOk": "Zaimportowano standardy i ustawienia CR.",
+    "importFailed": "Import nieudany: {error}",
+    "basePromptLabel": "Bazowy prompt AI",
+    "basePromptReset": "Przywróć domyślny",
+    "basePromptHint": "Edytujesz szablon dla bieżącego języka UI (PL/EN). Użyj placeholderów: {{FILES_BLOCK}}, {{STANDARDS_BLOCK}}, {{LANGUAGE_NAME}}, {{QUALITY_EXTRA}}, {{FILE_HEADER_NOTE}}. Brak {{FILES_BLOCK}} spowoduje dopisanie plików na końcu.",
+    "basePromptResetConfirm": "Przywrócić domyślny prompt AI dla bieżącego języka?"
+  },
+
   "ai": {
     "title": "Model AI",
     "hint": "(opcjonalnie — Gemini, Claude, OpenCode Zen, OpenCode lokalny, Ollama, LM Studio)",

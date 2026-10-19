@@ -15,7 +15,7 @@ const CATEGORIES = {
 export function renderIssueCard(issue, category, index) {
   const sourceBadge = issue.source === 'ai'
     ? '<span class="source-badge source-ai">AI</span>'
-    : `<span class="source-badge source-heur">${escapeHtml(t('report.heuristic'))}</span>`;
+    : '';
   return `
     <div class="issue-card">
       <div class="flex flex-wrap items-center justify-between gap-s10">

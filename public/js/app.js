@@ -1,7 +1,14 @@
 import { $ } from './dom.js';
 import { state } from './state.js';
 import { loadProjectsLocal, saveLLMConfig, LLM_PRESETS, loadUIConfig, saveUIConfig } from './storage.js';
-import { buildReviewPrompt, extractJSON, normalizeAIResult } from './prompt.js';
+import {
+  buildReviewPrompt,
+  extractJSON,
+  normalizeAIResult,
+  getDefaultBasePrompt,
+  sanitizeBasePrompt,
+  MAX_BASE_PROMPT
+} from './prompt.js';
 import { loadLocale, applyTranslations, t } from './i18n.js';
 import { checkGitInfo } from './gitinfo.js';
 import {
@@ -43,6 +50,7 @@ import {
   syncProviderUi
 } from './providers.js';
 import { initA11y, updateA11yLabels } from './a11y.js';
+import { sanitizeCustomStandards, MAX_CUSTOM_STANDARDS } from './standards.js';
 
 function getUiLang() {
   const ui = loadUIConfig();
@@ -50,7 +58,287 @@ function getUiLang() {
   return document.documentElement.getAttribute('lang') === 'en' ? 'en' : 'pl';
 }
 
-async function fetchAIIssues(repoPath, scope, compareBranch, includeTests, lang) {
+function getStoredBasePrompts(ui = loadUIConfig()) {
+  const prompts = ui.basePrompts && typeof ui.basePrompts === 'object' ? ui.basePrompts : {};
+  return {
+    pl: typeof prompts.pl === 'string' ? prompts.pl : '',
+    en: typeof prompts.en === 'string' ? prompts.en : ''
+  };
+}
+
+function readBasePromptFromEditor() {
+  const input = $('basePromptInput');
+  return sanitizeBasePrompt(input ? input.value : '');
+}
+
+function readReviewSettings() {
+  const lfInput = $('largeFileLinesInput');
+  const skipCss = $('largeFileSkipCssInput');
+  const standards = $('customStandardsInput');
+  const lang = getUiLang();
+  const basePrompts = getStoredBasePrompts();
+  const edited = readBasePromptFromEditor();
+  const defaultPrompt = getDefaultBasePrompt(lang);
+  basePrompts[lang] = edited && edited !== defaultPrompt ? edited : '';
+  let largeFileLines;
+  if (lfInput && lfInput.value) {
+    const v = Number(lfInput.value);
+    if (Number.isFinite(v) && v > 0) largeFileLines = Math.min(2000, Math.max(100, Math.floor(v)));
+  }
+  return {
+    largeFileLines,
+    largeFileSkipCss: !!(skipCss && skipCss.checked),
+    customStandards: sanitizeCustomStandards(standards ? standards.value : ''),
+    basePrompt: basePrompts[lang] || '',
+    basePrompts
+  };
+}
+
+function setLocalSettingsStatus(message) {
+  const el = $('localSettingsStatus');
+  if (el) el.textContent = message || '';
+}
+
+function formatSettingsTime(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString(getUiLang() === 'en' ? 'en-GB' : 'pl-PL');
+  } catch {
+    return iso;
+  }
+}
+
+function reviewSettingsFromUi(ui = loadUIConfig()) {
+  const prompts = getStoredBasePrompts(ui);
+  return {
+    largeFileLines: ui.largeFileLines,
+    largeFileSkipCss: !!ui.largeFileSkipCss,
+    customStandards: sanitizeCustomStandards(ui.customStandards || ''),
+    basePrompts: prompts
+  };
+}
+
+function hasLocalReviewContent(settings) {
+  if (!settings) return false;
+  if (settings.customStandards) return true;
+  if (settings.basePrompts?.pl || settings.basePrompts?.en) return true;
+  if (typeof settings.largeFileLines !== 'undefined') return true;
+  if (settings.largeFileSkipCss) return true;
+  return false;
+}
+
+async function syncReviewSettingsToDisk(settings) {
+  try {
+    const res = await fetch('/api/review-settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        largeFileLines: settings.largeFileLines,
+        largeFileSkipCss: settings.largeFileSkipCss,
+        customStandards: settings.customStandards,
+        basePrompts: settings.basePrompts
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (res.status === 404) throw new Error('restart');
+      throw new Error(data.error || `HTTP ${res.status}`);
+    }
+    setLocalSettingsStatus(t('reviewSettings.localSaved', {
+      at: formatSettingsTime(data.settings?.updatedAt)
+    }));
+    return data.settings || null;
+  } catch (err) {
+    if (err?.message === 'restart') {
+      setLocalSettingsStatus(t('reviewSettings.localSaveRestart'));
+    } else {
+      setLocalSettingsStatus(t('reviewSettings.localSaveFailed'));
+    }
+    return null;
+  }
+}
+
+function persistReviewSettings() {
+  const settings = readReviewSettings();
+  saveUIConfig({
+    largeFileLines: settings.largeFileLines,
+    largeFileSkipCss: settings.largeFileSkipCss,
+    customStandards: settings.customStandards,
+    basePrompts: settings.basePrompts
+  });
+  updateStandardsCounter();
+  updateBasePromptCounter();
+  syncReviewSettingsToDisk(settings);
+  return settings;
+}
+
+async function loadReviewSettingsFromDisk() {
+  try {
+    const res = await fetch('/api/review-settings');
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.exists ? data.settings : null;
+  } catch {
+    return null;
+  }
+}
+
+async function hydrateReviewSettings() {
+  const localUi = loadUIConfig();
+  const disk = await loadReviewSettingsFromDisk();
+  if (disk) {
+    saveUIConfig({
+      largeFileLines: disk.largeFileLines,
+      largeFileSkipCss: disk.largeFileSkipCss,
+      customStandards: disk.customStandards,
+      basePrompts: disk.basePrompts
+    });
+    applyReviewSettings(loadUIConfig());
+    setLocalSettingsStatus(t('reviewSettings.localLoaded', {
+      at: formatSettingsTime(disk.updatedAt)
+    }));
+    return;
+  }
+  applyReviewSettings(localUi);
+  const fromBrowser = reviewSettingsFromUi(localUi);
+  if (hasLocalReviewContent(fromBrowser)) {
+    await syncReviewSettingsToDisk(fromBrowser);
+  }
+}
+
+function exportReviewStandards() {
+  const settings = persistReviewSettings();
+  const payload = {
+    app: 'VibeCR',
+    type: 'review-settings',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    customStandards: settings.customStandards,
+    largeFileLines: settings.largeFileLines,
+    largeFileSkipCss: settings.largeFileSkipCss,
+    basePrompts: settings.basePrompts
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `vibecr-standardy-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function triggerImportReviewStandards() {
+  const input = $('importStandardsFile');
+  if (!input) return;
+  input.value = '';
+  input.click();
+}
+
+async function importReviewStandardsFile(event) {
+  const input = event.target;
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  try {
+    const text = await file.text();
+    let incoming;
+    const trimmed = text.trim();
+    if (!trimmed) throw new Error('empty');
+    if (trimmed.startsWith('{')) {
+      const parsed = JSON.parse(trimmed);
+      incoming = parsed.settings && typeof parsed.settings === 'object'
+        ? parsed.settings
+        : parsed;
+      if (typeof incoming.customStandards !== 'string' && typeof incoming.standards === 'string') {
+        incoming = { ...incoming, customStandards: incoming.standards };
+      }
+    } else {
+      incoming = { customStandards: trimmed };
+    }
+    const current = readReviewSettings();
+    const merged = {
+      largeFileLines: incoming.largeFileLines ?? current.largeFileLines,
+      largeFileSkipCss: typeof incoming.largeFileSkipCss === 'boolean'
+        ? incoming.largeFileSkipCss
+        : current.largeFileSkipCss,
+      customStandards: sanitizeCustomStandards(
+        typeof incoming.customStandards === 'string'
+          ? incoming.customStandards
+          : current.customStandards
+      ),
+      basePrompts: {
+        pl: typeof incoming.basePrompts?.pl === 'string'
+          ? sanitizeBasePrompt(incoming.basePrompts.pl)
+          : current.basePrompts.pl,
+        en: typeof incoming.basePrompts?.en === 'string'
+          ? sanitizeBasePrompt(incoming.basePrompts.en)
+          : current.basePrompts.en
+      }
+    };
+    saveUIConfig(merged);
+    applyReviewSettings(loadUIConfig());
+    await syncReviewSettingsToDisk(merged);
+    setLocalSettingsStatus(t('reviewSettings.importOk'));
+  } catch (err) {
+    setLocalSettingsStatus(t('reviewSettings.importFailed', {
+      error: err?.message || String(err)
+    }));
+  }
+}
+
+function updateStandardsCounter() {
+  const el = $('customStandardsCount');
+  const input = $('customStandardsInput');
+  if (!el || !input) return;
+  const len = sanitizeCustomStandards(input.value).length;
+  el.textContent = `${len} / ${MAX_CUSTOM_STANDARDS}`;
+}
+
+function updateBasePromptCounter() {
+  const el = $('basePromptCount');
+  const input = $('basePromptInput');
+  if (!el || !input) return;
+  const len = sanitizeBasePrompt(input.value).length;
+  el.textContent = `${len} / ${MAX_BASE_PROMPT}`;
+}
+
+function loadBasePromptIntoEditor(ui = loadUIConfig(), lang = getUiLang()) {
+  const input = $('basePromptInput');
+  if (!input) return;
+  const stored = getStoredBasePrompts(ui)[lang];
+  const sanitized = sanitizeBasePrompt(stored || '');
+  input.value = sanitized || getDefaultBasePrompt(lang);
+  updateBasePromptCounter();
+}
+
+function resetBasePrompt() {
+  if (!confirm(t('reviewSettings.basePromptResetConfirm'))) return;
+  const lang = getUiLang();
+  const basePrompts = getStoredBasePrompts();
+  basePrompts[lang] = '';
+  saveUIConfig({ basePrompts });
+  const input = $('basePromptInput');
+  if (input) input.value = getDefaultBasePrompt(lang);
+  updateBasePromptCounter();
+  persistReviewSettings();
+}
+
+function applyReviewSettings(ui) {
+  const lf = $('largeFileLinesInput');
+  if (lf && typeof ui.largeFileLines !== 'undefined') {
+    lf.value = String(ui.largeFileLines);
+  }
+  const skipCss = $('largeFileSkipCssInput');
+  if (skipCss) skipCss.checked = !!ui.largeFileSkipCss;
+  const standards = $('customStandardsInput');
+  if (standards) standards.value = sanitizeCustomStandards(ui.customStandards || '');
+  updateStandardsCounter();
+  loadBasePromptIntoEditor(ui);
+}
+
+async function fetchAIIssues(repoPath, scope, compareBranch, includeTests, lang, reviewOpts) {
   const res = await fetch('/api/files', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -62,7 +350,7 @@ async function fetchAIIssues(repoPath, scope, compareBranch, includeTests, lang)
   if (!data.files.length) return { ai: { critical: [], framework: [], runtime: [], quality: [] }, sentFiles: 0, truncated: false };
 
   const config = saveLLMConfig();
-  const prompt = buildReviewPrompt(data.files, lang);
+  const prompt = buildReviewPrompt(data.files, lang, reviewOpts);
   const reply = await callLLM(config, prompt);
   return { ai: normalizeAIResult(extractJSON(reply)), sentFiles: data.files.length, truncated: data.truncated };
 }
@@ -92,14 +380,20 @@ async function runReview() {
 
     statusText.className = 'status-work';
     statusText.textContent = t('status.heuristic');
-    const largeFileLinesInput = $('largeFileLinesInput');
-    const largeFileLines = largeFileLinesInput && largeFileLinesInput.value
-      ? Number(largeFileLinesInput.value)
-      : undefined;
+    const reviewOpts = persistReviewSettings();
     const res = await fetch('/api/review', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ repoPath, scope, compareBranch, includeTests, largeFileLines, lang })
+      body: JSON.stringify({
+        repoPath,
+        scope,
+        compareBranch,
+        includeTests,
+        largeFileLines: reviewOpts.largeFileLines,
+        largeFileSkipCss: reviewOpts.largeFileSkipCss,
+        customStandards: reviewOpts.customStandards,
+        lang
+      })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
@@ -115,7 +409,7 @@ async function runReview() {
         statusText.className = 'status-work';
         statusText.textContent = t('status.aiRunning', { provider: llmConfig.provider });
         try {
-          const aiData = await fetchAIIssues(repoPath, scope, compareBranch, includeTests, lang);
+          const aiData = await fetchAIIssues(repoPath, scope, compareBranch, includeTests, lang, reviewOpts);
           aiResult = aiData.ai;
           const aiCount = aiResult.critical.length + aiResult.framework.length + aiResult.runtime.length + aiResult.quality.length;
           aiInfoText = t('report.aiAdded', {
@@ -212,13 +506,35 @@ function wireEvents() {
   $('runBtn').addEventListener('click', runReview);
   $('copyAllBtn').addEventListener('click', copyAllIssues);
   const lfInput = $('largeFileLinesInput');
-  if (lfInput) {
-    lfInput.addEventListener('change', () => {
-      const v = Number(lfInput.value);
-      if (Number.isFinite(v) && v > 0) saveUIConfig({ largeFileLines: Math.min(2000, Math.floor(v)) });
-      else saveUIConfig({ largeFileLines: undefined });
+  if (lfInput) lfInput.addEventListener('change', persistReviewSettings);
+  const skipCssInput = $('largeFileSkipCssInput');
+  if (skipCssInput) skipCssInput.addEventListener('change', persistReviewSettings);
+  const standardsInput = $('customStandardsInput');
+  if (standardsInput) {
+    standardsInput.addEventListener('input', updateStandardsCounter);
+    standardsInput.addEventListener('change', persistReviewSettings);
+    standardsInput.addEventListener('blur', () => {
+      standardsInput.value = sanitizeCustomStandards(standardsInput.value);
+      persistReviewSettings();
     });
   }
+  const exportStandardsBtn = $('exportStandardsBtn');
+  if (exportStandardsBtn) exportStandardsBtn.addEventListener('click', exportReviewStandards);
+  const importStandardsBtn = $('importStandardsBtn');
+  if (importStandardsBtn) importStandardsBtn.addEventListener('click', triggerImportReviewStandards);
+  const importStandardsFile = $('importStandardsFile');
+  if (importStandardsFile) importStandardsFile.addEventListener('change', importReviewStandardsFile);
+  const basePromptInput = $('basePromptInput');
+  if (basePromptInput) {
+    basePromptInput.addEventListener('input', updateBasePromptCounter);
+    basePromptInput.addEventListener('change', persistReviewSettings);
+    basePromptInput.addEventListener('blur', () => {
+      basePromptInput.value = sanitizeBasePrompt(basePromptInput.value) || getDefaultBasePrompt(getUiLang());
+      persistReviewSettings();
+    });
+  }
+  const resetBasePromptBtn = $('resetBasePromptBtn');
+  if (resetBasePromptBtn) resetBasePromptBtn.addEventListener('click', resetBasePrompt);
   const themeBtn = $('themeToggleBtn');
   if (themeBtn) {
     themeBtn.addEventListener('click', () => {
@@ -230,6 +546,7 @@ function wireEvents() {
   const langBtn = $('langToggleBtn');
   if (langBtn) {
     langBtn.addEventListener('click', async () => {
+      persistReviewSettings();
       const next = (document.documentElement.getAttribute('lang') || 'pl') === 'pl' ? 'en' : 'pl';
       document.documentElement.setAttribute('lang', next);
       langBtn.textContent = next === 'en' ? 'EN' : 'PL';
@@ -299,6 +616,7 @@ async function applyLocale() {
   syncProviderUi();
   renderPresets();
   updateReportTitles();
+  loadBasePromptIntoEditor(ui, lang);
   if (state.lastReport) {
     const detected = state.lastReport.detected || { languages: [], frameworks: [] };
     const languages = detected.languages.join(', ') || t('report.stackUnknown');
@@ -321,10 +639,7 @@ async function init() {
   initA11y();
 
   const ui = loadUIConfig();
-  const lf = $('largeFileLinesInput');
-  if (lf && typeof ui.largeFileLines !== 'undefined') {
-    lf.value = String(ui.largeFileLines);
-  }
+  applyReviewSettings(ui);
   const initialTheme = ui.theme === 'dark' || ui.theme === 'light'
     ? ui.theme
     : getActiveTheme();
@@ -340,6 +655,7 @@ async function init() {
   }
 
   await applyLocale();
+  await hydrateReviewSettings();
   applyLLMConfig();
 
   if (state.projects.length) {

@@ -4,7 +4,7 @@ const path = require('path');
 const { runGit, isGitRepo, collectFiles } = require('../lib/git');
 const { analyzeFileContent } = require('../lib/analysis');
 const { detectStack } = require('../lib/stack');
-const { DEFAULT_LARGE_FILE_LINES } = require('../lib/scanner');
+const { normalizeReviewOptions } = require('../lib/standards');
 
 const router = express.Router();
 
@@ -34,8 +34,9 @@ router.post('/git-info', (req, res) => {
 
 // Główne skanowanie heurystyczne (git diff lub cała aplikacja)
 router.post('/review', (req, res) => {
-  const { repoPath, scope, compareBranch, includeTests, largeFileLines, lang } = req.body;
-  const uiLang = lang === 'en' ? 'en' : 'pl';
+  const { repoPath, scope, compareBranch, includeTests } = req.body;
+  const reviewOpts = normalizeReviewOptions(req.body);
+  const uiLang = reviewOpts.lang;
 
   if (!repoPath || !fs.existsSync(repoPath)) {
     return res.status(400).json({ error: uiLang === 'en' ? 'Invalid local path.' : 'Nieprawidłowa ścieżka lokalna.' });
@@ -71,7 +72,11 @@ router.post('/review', (req, res) => {
       } catch (e) {
         return;
       }
-      const fileIssues = analyzeFileContent(filePath, content, { largeFileLines, lang: uiLang });
+      const fileIssues = analyzeFileContent(filePath, content, {
+        largeFileLines: reviewOpts.largeFileLines,
+        largeFileSkipCss: reviewOpts.largeFileSkipCss,
+        lang: uiLang
+      });
       report.critical.push(...fileIssues.critical);
       report.framework.push(...fileIssues.framework);
       report.runtime.push(...fileIssues.runtime);

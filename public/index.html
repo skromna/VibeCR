@@ -90,13 +90,58 @@
               <input type="checkbox" id="includeTestsInput" />
               <span data-i18n="tests.include">Uwzględnij pliki testowe</span> <span class="field-hint" data-i18n="tests.patterns">(<code>*.test.*</code>, <code>*.spec.*</code>, <code>__tests__/</code>, <code>e2e/</code>)</span>
             </label>
-            <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
-              <label class="field-label" style="font-size: 12px; margin: 0;" data-i18n="quality.largeThreshold">Próg dużego pliku (linie):</label>
-              <input id="largeFileLinesInput" type="number" min="100" max="2000" step="50" class="text-input mono" style="width: 80px; padding: 4px 6px; font-size: 12px;" placeholder="400" />
-              <span class="field-hint" data-i18n="quality.hint">Domyślnie: 400. AI też uwzględnia standardy jakości.</span>
-            </div>
           </div>
         </div>
+
+        <details class="ai-config" style="margin-top: 15px;">
+          <summary>&#9881; <span data-i18n="reviewSettings.title">Ustawienia code review</span> <span class="field-hint" style="font-weight: 400;" data-i18n="reviewSettings.hint">(heurystyka i własne standardy)</span></summary>
+          <div class="ai-config-body">
+            <p class="field-label" data-i18n="reviewSettings.heuristicLabel">Heurystyka lokalna</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; margin-bottom: 12px;">
+              <label class="field-label" style="font-size: 12px; margin: 0;" data-i18n="reviewSettings.largeThreshold">Próg dużego pliku (linie):</label>
+              <input id="largeFileLinesInput" type="number" min="100" max="2000" step="50" class="text-input mono" style="width: 80px; padding: 4px 6px; font-size: 12px;" placeholder="400" />
+              <span class="field-hint" data-i18n="reviewSettings.largeHint">Domyślnie: 400. Powyżej progu pojawia się sugestia podziału pliku.</span>
+            </div>
+            <label class="option-row" style="margin-bottom: 15px;">
+              <input type="checkbox" id="largeFileSkipCssInput" />
+              <span data-i18n="reviewSettings.skipCss">Nie sugeruj podziału dla plików CSS/SCSS/SASS/LESS</span>
+            </label>
+            <div class="flex items-center justify-between gap-s10" style="margin-bottom: 8px; flex-wrap: wrap;">
+              <label class="field-label" for="customStandardsInput" style="margin: 0;" data-i18n="reviewSettings.standardsLabel">Własne standardy / reguły zespołu</label>
+              <div class="flex gap-s5">
+                <button type="button" id="exportStandardsBtn" class="btn btn-subtle" style="font-size: 12px; padding: 5px 10px;" data-i18n="reviewSettings.exportStandards">Eksportuj</button>
+                <button type="button" id="importStandardsBtn" class="btn btn-subtle" style="font-size: 12px; padding: 5px 10px;" data-i18n="reviewSettings.importStandards">Importuj</button>
+                <input id="importStandardsFile" type="file" accept="application/json,.json,.txt" style="display: none;" />
+              </div>
+            </div>
+            <textarea
+              id="customStandardsInput"
+              class="text-input standards-textarea"
+              rows="5"
+              maxlength="2000"
+              data-i18n-placeholder="reviewSettings.standardsPlaceholder"
+              placeholder="np. Zakaz any w TypeScript; każdy endpoint musi mieć walidację wejścia; preferuj early return..."
+            ></textarea>
+            <p class="field-hint" style="margin-top: 6px;" data-i18n="reviewSettings.standardsHint">Zapisywane lokalnie w <code>data/review-settings.local.json</code>.</p>
+            <p class="field-hint" id="customStandardsCount" style="margin-top: 4px;">0 / 2000</p>
+            <p class="field-hint" id="localSettingsStatus" style="margin-top: 4px;"></p>
+
+            <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border);">
+              <div class="flex items-center justify-between gap-s10" style="margin-bottom: 8px; flex-wrap: wrap;">
+                <label class="field-label" for="basePromptInput" style="margin: 0;" data-i18n="reviewSettings.basePromptLabel">Bazowy prompt AI</label>
+                <button type="button" id="resetBasePromptBtn" class="btn btn-subtle" style="font-size: 12px; padding: 5px 10px;" data-i18n="reviewSettings.basePromptReset">Przywróć domyślny</button>
+              </div>
+              <textarea
+                id="basePromptInput"
+                class="text-input standards-textarea base-prompt-textarea"
+                rows="12"
+                spellcheck="false"
+              ></textarea>
+              <p class="field-hint" style="margin-top: 6px;" data-i18n="reviewSettings.basePromptHint">Edytujesz szablon dla bieżącego języka UI (PL/EN). Użyj placeholderów: {{FILES_BLOCK}}, {{STANDARDS_BLOCK}}, {{LANGUAGE_NAME}}, {{QUALITY_EXTRA}}, {{FILE_HEADER_NOTE}}. Brak {{FILES_BLOCK}} spowoduje dopisanie plików na końcu.</p>
+              <p class="field-hint" id="basePromptCount" style="margin-top: 4px;">0 / 30000</p>
+            </div>
+          </div>
+        </details>
 
         <details class="ai-config" style="margin-top: 15px;">
           <summary>&#9889; <span data-i18n="ai.title">Model AI</span> <span class="field-hint" style="font-weight: 400;" data-i18n="ai.hint">(opcjonalnie — Gemini, Claude, OpenCode Zen, OpenCode lokalny, Ollama, LM Studio)</span></summary>
