@@ -72,3 +72,41 @@ npm install
 # 2. Uruchom serwer lokalny
 npm start
 # lub: node server.js
+```
+
+## 🤝 Dołącz do rozwoju VibeCR – Twórzmy to narzędzie razem!
+
+VibeCR powstało z myślą o realnych potrzebach zespołów programistycznych i stanowi fundament, który można łatwo skalować oraz dostosowywać do wymogów konkretnej organizacji. Projekt rozwijany jest na otwartej licencji **CC BY-SA 4.0** w filozofii *zero-build* i *minimal-dependencies* (czysty Node.js + Express oraz Vanilla JS ES Modules). Dzięki temu próg wejścia w kod źródłowy jest minimalny – uruchomienie środowiska zajmuje kilkanaście sekund, a dodanie nowej funkcji nie wymaga przekopywania się przez warstwy abstrakcji.
+
+Dalszy kierunek rozwoju aplikacji zależy bezpośrednio od Waszego feedbacku, dlatego zapraszamy programistów, liderów technicznych oraz partnerów biznesowych do wspólnego kształtowania kolejnego etapu VibeCR.
+
+### Jak możesz się zaangażować?
+- **Zostań Early Adopterem:** Uruchom VibeCR na swoim projekcie i daj nam znać, jak radzi sobie z Waszym stosem technologicznym w codziennej pracy.
+- **Zbuduj bazę standardów:** Pomóż stworzyć i przetestować predefiniowane paczki reguł (`JSON`) dla konkretnych technologii i konwencji używanych w Waszych zespołach.
+- **Rozwijaj reguły detekcji:** Masz pomysł na nową regułę heurystyczną, która wyłapie częsty błąd zanim kod trafi na Pull Request? Dopisz ją bezpośrednio w kodzie lub zgłoś propozycję!
+
+### Kogo szukamy do współpracy?
+- **Inżynierów różnych technologii (Python, Java, C#, Go, Rust, PHP):** Pomóżcie nam rozbudować lokalny silnik heurystyczny o reguły i antypatterny specyficzne dla Waszych ekosystemów.
+- **Specjalistów Security (AppSec) i DevOps:** Wspólnie możemy rozszerzyć bazę wykrywanych podatności oraz stworzyć integracje z git-hookami (`pre-commit` / `pre-push`) i procesami CI/CD.
+- **Ekspertów Prompt Engineeringu i lokalnych LLM:** Testujcie i optymalizujcie szablony promptów pod kątem mniejszych, lokalnych modeli (*Ollama, LM Studio, OpenCode*).
+
+### Obszary współpracy biznesowej i organizacyjnej:
+- **Wdrożenia pilotażowe (Proof of Concept):** Przetestowanie narzędzia w wybranym zespole projektowym i zmierzenie realnej oszczędności czasu podczas właściwego Code Review.
+- **Kierunkowy rozwój funkcji (Feature Sponsorship):** Możliwość priorytetyzacji funkcji kluczowych dla Państwa organizacji (np. integracja z wewnętrznymi systemami CI/CD, dedykowane raporty PDF/HTML dla audytorów czy prekonfigurowane profile bezpieczeństwa).
+- **Wsparcie inicjatywy:** Projekt rozwijany jest przy wsparciu **[Fundacji Nurt Przemian](https://nurtprzemian.pl/dokumenty/cegielka)** – zapraszamy do partnerstwa i współtworzenia standardów bezpiecznego oraz dostępnego cyfrowo oprogramowania.
+
+---
+
+## 🗺️ Kierunki rozwoju (Roadmapa) – co jeszcze możemy razem zrobić?
+
+1. **Tryb CLI oraz Git Hooks (`pre-commit`):** Możliwość automatycznego blokowania commita w terminalu, jeśli VibeCR wykryje w kodzie błąd o statusie 🔴 *Krytycznym* (np. zaszyty klucz API lub hasło).
+2. **Biblioteka gotowych profili (Presets):** Stworzenie katalogu gotowych standardów zespołowych do zaimportowania jednym kliknięciem (np. *„Standardy React + TypeScript Strict”*, *„Audyt bezpieczeństwa OWASP Top 10”*, *„Standardy Clean Architecture .NET”*).
+3. **Rozbudowa lokalnej heurystyki multi-stack:** Rozszerzenie statycznej analizy (działającej w 100% offline, bez udziału AI) o zaawansowane reguły dla Pythona, Javy, C# czy Go.
+4. **Wtyczki do IDE (VS Code / JetBrains):** Przeniesienie doświadczenia z przeglądarki bezpośrednio do paska bocznego edytora kodu dewelopera.
+
+---
+
+## 📄 Licencja i Autor
+
+- **Licencja:** Projekt dostępny na licencji [Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)](https://creativecommons.org/licenses/by-sa/4.0/).
+- **Autor:** [Sandra Madalińska-Piórkowska](https://netbiznes.com/author.php?id=1) | [Fundacja Nurt Przemian](https://nurtprzemian.pl/dokumenty/cegielka) (`sandra@nurtprzemian.pl`)
