@@ -24,7 +24,8 @@ export async function browseTo(dirPath) {
   listEl.innerHTML = `<div class="browser-empty">${escapeHtml(t('browser.loading'))}</div>`;
 
   try {
-    const res = await fetch(`/api/browse?path=${encodeURIComponent(dirPath)}`);
+    const lang = document.documentElement.getAttribute('lang') === 'en' ? 'en' : 'pl';
+    const res = await fetch(`/api/browse?path=${encodeURIComponent(dirPath)}&lang=${lang}`);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
 

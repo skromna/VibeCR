@@ -102,6 +102,16 @@
     "providerOllama": "Ollama (lokalny)",
     "providerLmstudio": "LM Studio (lokalny)"
   },
+  "securityAudit": {
+    "use": "Audyt bezpieczeństwa (Cloudflare attack classes)",
+    "useHint": "(wymaga AI; metodyka MIT security-audit-skill)",
+    "import": "Import findings.json",
+    "importOk": "Zaimportowano findings CF: critical {critical}, quality {quality}, rejected {rejected}.",
+    "importSoft": "Zaimportowano z ostrzeżeniami walidacji (soft-map).",
+    "importFailed": "Import findings nieudany: {error}",
+    "statusRunning": "Audyt bezpieczeństwa AI...",
+    "added": " | Security CF ({model}): +{count} findings z {files} plików{soft}"
+  },
   "actions": {
     "run": "Uruchom analizę kodu",
     "restore": "Przywróć usunięte",
@@ -127,6 +137,9 @@
     "copied": "Skopiowano!",
     "copyFixTitle": "Kopiuj poprawkę",
     "heuristic": "heurystyka",
+    "badgeCf": "CF",
+    "badgeVerify": "verify",
+    "badgeHardening": "hardening",
     "stack": "Wykryty stos: {languages}{frameworks}",
     "stackUnknown": "nieokreślony",
     "stackFrameworks": " | frameworki: {list}",
@@ -205,6 +218,8 @@
     "opencodeNoContent": "OpenCode nie zwrócił treści — sprawdź, czy masz wybrany działający model/dostawcę w OpenCode.",
     "opencodeHttpSession": "OpenCode HTTP {status} przy tworzeniu sesji{hint}",
     "opencodeHttpPrompt": "OpenCode HTTP {status} przy promptcie",
+    "opencodeNeedModel": "Wybierz model OpenCode w formacie dostawca/model (np. opencode/deepseek-v4.1-flash-free) — lista po „odśwież z OpenCode”.",
+    "opencodeServerBug": "OpenCode padł przy /message ({detail}). Częste przyczyny: (1) kasowanie sesji w trakcie odpowiedzi (FK), (2) stara wersja / uszkodzona baza SQLite. VibeCR nie usuwa już sesji w locie — odśwież stronę (Ctrl+F5), wybierz darmowy model np. opencode/deepseek-v4.1-flash-free i uruchom ponownie. Gdy wraca: upgrade OpenCode ≥1.18, usuń %USERPROFILE%\\.local\\share\\opencode\\opencode.db*, restart serve.",
     "opencodePasswordHint": " (nieprawidłowe hasło OPENCODE_SERVER_PASSWORD)",
     "opencodeModelError": "OpenCode: {message}",
     "opencodeModelFallback": "błąd modelu",

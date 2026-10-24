@@ -2,7 +2,11 @@ const path = require('path');
 const { DEFAULT_LARGE_FILE_LINES } = require('./scanner');
 
 function stripCommentsAndLiterals(content) {
-  return content
+  const MAX_SCAN_LEN = 64 * 1024;
+  const src = typeof content === 'string' && content.length > MAX_SCAN_LEN
+    ? content.slice(0, MAX_SCAN_LEN)
+    : (content || '');
+  return src
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
     .replace(/(^|[^:])\/\/[^\n]*/g, '$1 ')
     .replace(/'(?:\\.|[^'\\\n])*'/g, "''")
@@ -286,7 +290,10 @@ function analyzeFileContent(filePath, content, opts) {
     pushIssue(issues.runtime, filePath, m.validationStatusTitle, m.validationStatusDesc, m.validationStatusFix);
   }
 
-  if (isJs && /console\.log\s*\([^)]*(?:req\.body|\bdata\b|\bauthor\b|\bemail\b|\bpassword\b|\buser\b|\burl\b|searchQuery|query)/i.test(content)) {
+  if (isJs && (
+    /console\.log\s*\([^)]*(?:req\.body|\bauthor\b|\bemail\b|\bpassword\b|\busername\b|searchQuery)/i.test(content)
+    || /console\.log\s*\(\s*(?:['"`][^'"`]*['"`]\s*,\s*)?(?:data|body|user|req)\b/.test(content)
+  )) {
     pushIssue(issues.runtime, filePath, m.consolePiiTitle, m.consolePiiDesc, m.consolePiiFix);
   }
 
@@ -295,8 +302,7 @@ function analyzeFileContent(filePath, content, opts) {
     pushIssue(issues.critical, filePath, m.bodyLimitTitle, m.bodyLimitDesc, m.bodyLimitFix);
   }
 
-  if (isJs && /rate\s*limit/i.test(content)
-    && (/TODO[:\s].*rate\s*limit/i.test(content) || /function\s+\w*[Rr]ate[Ll]imit\w*\s*\([^)]*\)\s*\{[^}]*return\s+true\s*;?\s*\}/.test(content))) {
+  if (isJs && /function\s+\w*[Rr]ate[Ll]imit\w*\s*\([^)]*\)\s*\{[\s\S]{0,200}?return\s+true\s*;?/.test(content)) {
     pushIssue(issues.quality, filePath, m.rateLimitStubTitle, m.rateLimitStubDesc, m.rateLimitStubFix);
   }
 

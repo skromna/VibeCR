@@ -1,19 +1,9 @@
 const fs = require('fs');
 const path = require('path');
-const { sanitizeCustomStandards } = require('./standards');
+const { sanitizeCustomStandards, sanitizeBasePrompt } = require('./standards');
 
 const DATA_DIR = path.join(__dirname, '..', '..', 'data');
 const SETTINGS_FILE = path.join(DATA_DIR, 'review-settings.local.json');
-const MAX_BASE_PROMPT = 30000;
-
-function sanitizeBasePrompt(input) {
-  if (typeof input !== 'string') return '';
-  let s = input.normalize('NFC');
-  s = s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
-  s = s.replace(/[\u200B-\u200D\u202A-\u202E\u2060\uFEFF]/g, '');
-  s = s.replace(/\n{4,}/g, '\n\n\n');
-  return s.slice(0, MAX_BASE_PROMPT).trim();
-}
 
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) {
@@ -61,7 +51,14 @@ function saveLocalReviewSettings(payload) {
     ...payload,
     updatedAt: new Date().toISOString()
   });
-  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(next, null, 2), 'utf8');
+  const tmp = `${SETTINGS_FILE}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(next, null, 2), 'utf8');
+  try {
+    fs.renameSync(tmp, SETTINGS_FILE);
+  } catch {
+    fs.copyFileSync(tmp, SETTINGS_FILE);
+    try { fs.unlinkSync(tmp); } catch { void 0; }
+  }
   return next;
 }
 

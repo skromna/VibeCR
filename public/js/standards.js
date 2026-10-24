@@ -1,13 +1,36 @@
 export const MAX_CUSTOM_STANDARDS = 2000;
 
-const INJECTION_PATTERNS = [
-  /\b(ignore|disregard|forget)\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|rules?)\b/gi,
-  /\b(system|assistant|developer)\s*:\s*/gi,
-  /\bdo\s+not\s+follow\s+(the\s+)?(system|user)\b/gi,
-  /\b(override|bypass)\s+(all\s+)?(safety|rules?|instructions?)\b/gi,
-  /\bignoruj\s+(wszystkie\s+)?(poprzednie\s+)?(instrukcje|polecenia|zasady)\b/gi,
-  /\b(nie\s+stosuj|pomijaj)\s+(systemowych\s+)?(instrukcji|zasad)\b/gi
-];
+let injectionPatterns = null;
+let patternsPromise = null;
+
+async function loadInjectionPatterns() {
+  if (injectionPatterns) return injectionPatterns;
+  if (!patternsPromise) {
+    patternsPromise = fetch('/shared/injection-patterns.json')
+      .then((r) => {
+        if (!r.ok) throw new Error('patterns');
+        return r.json();
+      })
+      .then((defs) => {
+        injectionPatterns = (Array.isArray(defs) ? defs : []).map((p) => new RegExp(p.pattern, p.flags));
+        return injectionPatterns;
+      })
+      .catch(() => {
+        injectionPatterns = [
+          /\b(ignore|disregard|forget)\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|rules?)\b/gi,
+          /\b(system|assistant|developer)\s*:\s*/gi,
+          /\bdo\s+not\s+follow\s+(the\s+)?(system|user)\b/gi,
+          /\b(override|bypass)\s+(all\s+)?(safety|rules?|instructions?)\b/gi,
+          /\bignoruj\s+(wszystkie\s+)?(poprzednie\s+)?(instrukcje|polecenia|zasady)\b/gi,
+          /\b(nie\s+stosuj|pomijaj)\s+(systemowych\s+)?(instrukcji|zasad)\b/gi
+        ];
+        return injectionPatterns;
+      });
+  }
+  return patternsPromise;
+}
+
+loadInjectionPatterns();
 
 export function sanitizeCustomStandards(input) {
   if (typeof input !== 'string') return '';
@@ -16,7 +39,8 @@ export function sanitizeCustomStandards(input) {
   s = s.replace(/[\u200B-\u200D\u202A-\u202E\u2060\uFEFF]/g, '');
   s = s.replace(/```+/g, "'''");
   s = s.replace(/<\/?(system|assistant|user|prompt|instruction)[^>]*>/gi, '');
-  for (const re of INJECTION_PATTERNS) {
+  const patterns = injectionPatterns || [];
+  for (const re of patterns) {
     s = s.replace(re, '[filtered]');
   }
   s = s.replace(/\n{3,}/g, '\n\n');

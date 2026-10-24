@@ -78,6 +78,21 @@ Funkcje: `stripCommentsAndLiterals()`, `analyzeFileContent(filePath, content, op
 - `POST /api/review` - zwraca raport z 4 kategoriami + `detected`, `quality` uwzględnia `largeFileLines`
 - `POST /api/files` - zwraca max 40 plików po 15000 znaków (do AI, tylko lokalnie)
 
+### Cloudflare security-audit (MIT)
+Vendored under `src/lib/cf-security-skill/` from [cloudflare/security-audit-skill](https://github.com/cloudflare/security-audit-skill) (validators + schema + selected attack-class docs). See `ATTRIBUTION.md`.
+
+Wrapper: `src/lib/cfSecurity.js` — `validateFindings`, `validateCoverageLedger`, `mapFindingsToReport`, `buildSecurityPromptExtras`.
+
+Routes (`src/routes/audit.js`):
+- `POST /api/security-audit/import` — import `findings.json` → raport VibeCR
+- `POST /api/security-audit/validate` — sama walidacja
+- `POST /api/security-audit/map` — soft-map (także niepełny schemat)
+- `POST /api/security-audit` — prepare Security AI pass (pliki + attack classes) lub mapowanie findings
+
+Mapowanie: `confirmed` (medium+) → critical; `confirmed` low/informational → quality (hardening); `needs_validation` → critical + badge verify; `rejected` pomijane.
+
+Pełny 6-fazowy harness agentów pozostaje poza VibeCR (Cursor + upstream skill); VibeCR importuje findings i wzbogaca lokalny CR.
+
 ### `llm.js` - `/api/llm-proxy`
 - Tylko loopback (`127.0.0.1`, `::1`, `::ffff:127.0.0.1`)
 - HTTPS dowolny host; HTTP tylko loopback

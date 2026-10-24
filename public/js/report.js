@@ -12,10 +12,24 @@ const CATEGORIES = {
   quality: { list: 'listQuality', count: 'countQuality' }
 };
 
+function sourceBadgeHtml(issue) {
+  if (issue.source === 'ai') {
+    return '<span class="source-badge source-ai">AI</span>';
+  }
+  if (issue.source === 'cf') {
+    if (issue.cfBadge === 'verify') {
+      return `<span class="source-badge source-verify">${escapeHtml(t('report.badgeVerify'))}</span>`;
+    }
+    if (issue.cfBadge === 'hardening') {
+      return `<span class="source-badge source-hardening">${escapeHtml(t('report.badgeHardening'))}</span>`;
+    }
+    return `<span class="source-badge source-cf">${escapeHtml(t('report.badgeCf'))}</span>`;
+  }
+  return '';
+}
+
 export function renderIssueCard(issue, category, index) {
-  const sourceBadge = issue.source === 'ai'
-    ? '<span class="source-badge source-ai">AI</span>'
-    : '';
+  const sourceBadge = sourceBadgeHtml(issue);
   return `
     <div class="issue-card">
       <div class="flex flex-wrap items-center justify-between gap-s10">
@@ -138,7 +152,12 @@ export function formatSection(title, issues, startIndex) {
   if (!issues.length) return null;
   const lines = [`## ${title} (${issues.length})`];
   issues.forEach((issue, i) => {
-    lines.push(`${startIndex + i}. ${issue.title}${issue.source === 'ai' ? ' [AI]' : ''}`);
+    const tag = issue.source === 'ai'
+      ? ' [AI]'
+      : (issue.source === 'cf'
+        ? (issue.cfBadge === 'verify' ? ' [verify]' : (issue.cfBadge === 'hardening' ? ' [hardening]' : ' [CF]'))
+        : '');
+    lines.push(`${startIndex + i}. ${issue.title}${tag}`);
     lines.push(`   ${t('report.copyFile', { file: issue.file })}`);
     lines.push(`   ${t('report.copyDesc', { desc: issue.description })}`);
     lines.push(`   ${t('report.copyFixLabel')}`);

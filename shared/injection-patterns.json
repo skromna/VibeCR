@@ -1,0 +1,8 @@
+[
+  { "pattern": "\\b(ignore|disregard|forget)\\s+(all\\s+)?(previous|prior|above|earlier)\\s+(instructions?|prompts?|rules?)\\b", "flags": "gi" },
+  { "pattern": "\\b(system|assistant|developer)\\s*:\\s*", "flags": "gi" },
+  { "pattern": "\\bdo\\s+not\\s+follow\\s+(the\\s+)?(system|user)\\b", "flags": "gi" },
+  { "pattern": "\\b(override|bypass)\\s+(all\\s+)?(safety|rules?|instructions?)\\b", "flags": "gi" },
+  { "pattern": "\\bignoruj\\s+(wszystkie\\s+)?(poprzednie\\s+)?(instrukcje|polecenia|zasady)\\b", "flags": "gi" },
+  { "pattern": "\\b(nie\\s+stosuj|pomijaj)\\s+(systemowych\\s+)?(instrukcji|zasad)\\b", "flags": "gi" }
+]

@@ -2,13 +2,11 @@ import { $ } from './dom.js';
 import { state } from './state.js';
 import { loadProjectsLocal, saveLLMConfig, LLM_PRESETS, loadUIConfig, saveUIConfig } from './storage.js';
 import {
-  buildReviewPrompt,
-  extractJSON,
-  normalizeAIResult,
   getDefaultBasePrompt,
   sanitizeBasePrompt,
   MAX_BASE_PROMPT
 } from './prompt.js';
+import { fetchAIIssues } from './ai-review.js';
 import { loadLocale, applyTranslations, t } from './i18n.js';
 import { checkGitInfo } from './gitinfo.js';
 import {
@@ -46,7 +44,6 @@ import {
   testLLM,
   startOpenCodeServer,
   stopOpenCodeServer,
-  callLLM,
   syncProviderUi
 } from './providers.js';
 import { initA11y, updateA11yLabels } from './a11y.js';
@@ -338,21 +335,84 @@ function applyReviewSettings(ui) {
   loadBasePromptIntoEditor(ui);
 }
 
-async function fetchAIIssues(repoPath, scope, compareBranch, includeTests, lang, reviewOpts) {
-  const res = await fetch('/api/files', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ repoPath, scope, compareBranch, includeTests, lang })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error);
+function emptyCfBuckets() {
+  return { critical: [], framework: [], runtime: [], quality: [] };
+}
 
-  if (!data.files.length) return { ai: { critical: [], framework: [], runtime: [], quality: [] }, sentFiles: 0, truncated: false };
+function applyImportedCfReport(mapped, soft) {
+  const report = mapped.report || emptyCfBuckets();
+  const meta = mapped.meta || {};
+  const detected = state.lastReport?.detected || { languages: [], frameworks: [] };
+  const base = state.lastReport || {
+    isRepo: true,
+    branch: t('report.branchNoGit'),
+    scannedFilesCount: 0,
+    detected,
+    critical: [],
+    framework: [],
+    runtime: [],
+    quality: [],
+    aiInfoText: ''
+  };
 
-  const config = saveLLMConfig();
-  const prompt = buildReviewPrompt(data.files, lang, reviewOpts);
-  const reply = await callLLM(config, prompt);
-  return { ai: normalizeAIResult(extractJSON(reply)), sentFiles: data.files.length, truncated: data.truncated };
+  state.lastReport = {
+    ...base,
+    critical: mergeIssues(base.critical || [], report.critical || []),
+    framework: mergeIssues(base.framework || [], report.framework || []),
+    runtime: mergeIssues(base.runtime || [], report.runtime || []),
+    quality: mergeIssues(base.quality || [], report.quality || []),
+    aiInfoText: (base.aiInfoText || '') + (soft ? ` ${t('securityAudit.importSoft')}` : '')
+  };
+
+  $('resultsSection').style.display = 'block';
+  $('scannedCount').textContent = state.lastReport.scannedFilesCount;
+  state.reportBackup = {
+    critical: state.lastReport.critical.slice(),
+    framework: state.lastReport.framework.slice(),
+    runtime: state.lastReport.runtime.slice(),
+    quality: state.lastReport.quality.slice()
+  };
+  updateReportTitles();
+  renderReport();
+
+  const status = $('findingsImportStatus');
+  if (status) {
+    status.textContent = t('securityAudit.importOk', {
+      critical: meta.mappedCritical ?? (report.critical || []).length,
+      quality: meta.mappedQuality ?? (report.quality || []).length,
+      rejected: meta.rejectedCount ?? 0
+    });
+  }
+}
+
+async function importFindingsFile(event) {
+  const input = event.target;
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  const status = $('findingsImportStatus');
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    const findings = Array.isArray(parsed)
+      ? parsed
+      : (Array.isArray(parsed.findings) ? parsed.findings : null);
+    if (!findings) throw new Error('expected findings array');
+
+    const res = await fetch('/api/security-audit/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ findings, lang: getUiLang() })
+    });
+    const data = await res.json();
+    if (!data.report) throw new Error(data.error || `HTTP ${res.status}`);
+    applyImportedCfReport(data, !data.ok);
+    if (!data.ok && status) {
+      status.textContent = `${t('securityAudit.importSoft')} ${(data.validation?.errors || []).slice(0, 2).join('; ')}`;
+    }
+  } catch (err) {
+    if (status) status.textContent = t('securityAudit.importFailed', { error: err.message || String(err) });
+  }
 }
 
 async function runReview() {
@@ -368,6 +428,7 @@ async function runReview() {
 
   const llmConfig = saveLLMConfig();
   const useAI = $('useAIInput').checked;
+  const useSecurityAudit = !!($('useSecurityAuditInput') && $('useSecurityAuditInput').checked);
   const lang = getUiLang();
 
   const runBtn = $('runBtn');
@@ -401,23 +462,42 @@ async function runReview() {
     let aiResult = { critical: [], framework: [], runtime: [], quality: [] };
     let aiInfoText = '';
 
-    if (useAI) {
+    if (useAI || useSecurityAudit) {
       const preset = LLM_PRESETS[llmConfig.provider];
       if (preset?.needKey && !llmConfig.apiKey) {
         alert(t('alerts.needApiKey'));
       } else {
         statusText.className = 'status-work';
-        statusText.textContent = t('status.aiRunning', { provider: llmConfig.provider });
+        statusText.textContent = useSecurityAudit
+          ? t('securityAudit.statusRunning')
+          : t('status.aiRunning', { provider: llmConfig.provider });
         try {
-          const aiData = await fetchAIIssues(repoPath, scope, compareBranch, includeTests, lang, reviewOpts);
+          const aiData = await fetchAIIssues(
+            repoPath,
+            scope,
+            compareBranch,
+            includeTests,
+            lang,
+            reviewOpts,
+            useSecurityAudit
+          );
           aiResult = aiData.ai;
           const aiCount = aiResult.critical.length + aiResult.framework.length + aiResult.runtime.length + aiResult.quality.length;
-          aiInfoText = t('report.aiAdded', {
-            model: llmConfig.model,
-            count: aiCount,
-            files: aiData.sentFiles,
-            truncated: aiData.truncated ? t('report.aiTruncated') : ''
-          });
+          if (useSecurityAudit && aiData.securityMeta) {
+            aiInfoText = t('securityAudit.added', {
+              model: llmConfig.model,
+              count: aiCount,
+              files: aiData.sentFiles,
+              soft: aiData.securityMeta.soft ? ` (${t('securityAudit.importSoft')})` : ''
+            });
+          } else {
+            aiInfoText = t('report.aiAdded', {
+              model: llmConfig.model,
+              count: aiCount,
+              files: aiData.sentFiles,
+              truncated: aiData.truncated ? t('report.aiTruncated') : ''
+            });
+          }
         } catch (aiErr) {
           aiInfoText = t('report.aiUnavailable', { error: aiErr.message });
         }
@@ -502,6 +582,27 @@ function wireEvents() {
   $('llmStartOpencode').addEventListener('click', startOpenCodeServer);
   $('llmStopOpencode').addEventListener('click', stopOpenCodeServer);
   $('useAIInput').addEventListener('change', saveLLMConfig);
+  const securityAuditInput = $('useSecurityAuditInput');
+  if (securityAuditInput) {
+    securityAuditInput.addEventListener('change', () => {
+      if (securityAuditInput.checked) {
+        const useAI = $('useAIInput');
+        if (useAI) useAI.checked = true;
+        saveLLMConfig();
+      }
+    });
+  }
+  const importFindingsBtn = $('importFindingsBtn');
+  if (importFindingsBtn) {
+    importFindingsBtn.addEventListener('click', () => {
+      const input = $('importFindingsFile');
+      if (!input) return;
+      input.value = '';
+      input.click();
+    });
+  }
+  const importFindingsFileInput = $('importFindingsFile');
+  if (importFindingsFileInput) importFindingsFileInput.addEventListener('change', importFindingsFile);
 
   $('runBtn').addEventListener('click', runReview);
   $('copyAllBtn').addEventListener('click', copyAllIssues);

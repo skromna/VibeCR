@@ -237,6 +237,9 @@ select.text-input { cursor: pointer; }
   padding: 1px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle;
 }
 .source-ai { background: var(--warn-bg); color: var(--warn-text); border: 1px solid var(--warn-border); }
+.source-cf { background: var(--primary-soft); color: var(--primary-hover); border: 1px solid var(--primary-border); }
+.source-verify { background: var(--warn-bg); color: var(--warn-text); border: 1px solid var(--warn-border); }
+.source-hardening { background: var(--empty-bg); color: var(--muted); border: 1px dashed var(--empty-border); }
 .empty-msg { font-size: 0.75rem; font-style: italic; color: var(--muted); background-color: var(--empty-bg); border: 1px dashed var(--empty-border); border-radius: 5px; padding: 10px; }
 .copy-fix-btn { white-space: nowrap; font-size: 0.75rem; padding: 5px 10px; }
 .dismiss-issue-btn { white-space: nowrap; font-size: 0.75rem; padding: 5px 10px; color: var(--danger); border-color: var(--danger-border); }

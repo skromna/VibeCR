@@ -1,20 +1,30 @@
 const express = require('express');
-const { execFileSync, spawn } = require('child_process');
+const { execFile, spawn } = require('child_process');
 const http = require('http');
 const os = require('os');
 const fs = require('fs');
 const path = require('path');
+const { asyncHandler, httpError } = require('../lib/asyncHandler');
 
 const router = express.Router();
 
-// Wykrywanie lokalnego serwera OpenCode (TUI potrafi nasłuchiwać na losowym porcie,
-// dlatego sam port 4096 to za mało — skanujemy porty procesów "opencode" na tej maszynie).
-function findOpenCodePorts() {
+function execFileAsync(cmd, args) {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, { windowsHide: true, maxBuffer: 8 * 1024 * 1024 }, (err, stdout) => {
+      if (err) reject(err);
+      else resolve(stdout);
+    });
+  });
+}
+
+async function findOpenCodePorts() {
   const ports = new Set([4096]);
   try {
     if (process.platform === 'win32') {
-      const netstat = execFileSync('netstat', ['-ano'], { encoding: 'utf-8', windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
-      const tasklist = execFileSync('tasklist', ['/FO', 'CSV', '/NH'], { encoding: 'utf-8', windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
+      const [netstat, tasklist] = await Promise.all([
+        execFileAsync('netstat', ['-ano']),
+        execFileAsync('tasklist', ['/FO', 'CSV', '/NH'])
+      ]);
       const opencodePids = new Set(
         tasklist
           .split(/\r?\n/)
@@ -27,7 +37,7 @@ function findOpenCodePorts() {
         if (m && opencodePids.has(m[2])) ports.add(Number(m[1]));
       });
     } else {
-      const ss = execFileSync('ss', ['-ltnpH'], { encoding: 'utf-8', windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
+      const ss = await execFileAsync('ss', ['-ltnpH']);
       ss.split(/\r?\n/).forEach((line) => {
         if (line.includes('opencode')) {
           const m = line.match(/:(\d+)\s/);
@@ -35,13 +45,12 @@ function findOpenCodePorts() {
         }
       });
     }
-  } catch (e) {
-    // brak netstat/ss nie jest błędem krytycznym — zostaje kandydat 4096
+  } catch {
+    void 0;
   }
   return [...ports];
 }
 
-// Odpytywanie /global/health serwera OpenCode: "ok" | "auth" (401 — złe hasło) | "no"
 function probeOpenCode(port, password, username) {
   return new Promise((resolve) => {
     const headers = {};
@@ -62,17 +71,19 @@ function probeOpenCode(port, password, username) {
   });
 }
 
-// Automatyczne wykrycie działającego serwera OpenCode (dowolny lokalny port).
-// Próbujemy hasła podanego przez klienta ORAZ hasła z lokalnego środowiska
-// (OPENCODE_SERVER_PASSWORD) — TUI generuje je losowo przy każdym uruchomieniu.
-router.post('/opencode-detect', async (req, res) => {
+function msg(lang, pl, en) {
+  return lang === 'en' ? en : pl;
+}
+
+router.post('/opencode-detect', asyncHandler(async (req, res) => {
+  const lang = req.body && req.body.lang === 'en' ? 'en' : 'pl';
   const bodyPassword = typeof req.body.password === 'string' ? req.body.password : '';
   const envPassword = process.env.OPENCODE_SERVER_PASSWORD || '';
   const username = process.env.OPENCODE_SERVER_USERNAME || 'opencode';
-  const passwords = [...new Set([bodyPassword, envPassword])];
+  const passwords = [...new Set(['', bodyPassword, envPassword])];
 
   try {
-    const candidates = findOpenCodePorts();
+    const candidates = await findOpenCodePorts();
     let authPort = null;
     for (const port of candidates) {
       for (const password of passwords) {
@@ -83,7 +94,7 @@ router.post('/opencode-detect', async (req, res) => {
             baseUrl: `http://127.0.0.1:${port}`,
             authRequired: !!password,
             username,
-            password: password || ''
+            passwordProvided: !!envPassword
           });
         }
         if (status === 'auth' && !authPort) authPort = port;
@@ -95,19 +106,25 @@ router.post('/opencode-detect', async (req, res) => {
         baseUrl: `http://127.0.0.1:${authPort}`,
         authRequired: true,
         username,
-        error: `Znaleziono serwer OpenCode na porcie ${authPort}, ale hasło jest nieprawidłowe. Ustaw OPENCODE_SERVER_PASSWORD w środowisku VibeCR albo uruchom: opencode serve --port 4096`
+        passwordProvided: false,
+        error: msg(
+          lang,
+          `Znaleziono serwer OpenCode na porcie ${authPort}, ale hasło jest nieprawidłowe. Ustaw OPENCODE_SERVER_PASSWORD w środowisku VibeCR albo uruchom: opencode serve --port 4096`,
+          `Found OpenCode on port ${authPort}, but the password is invalid. Set OPENCODE_SERVER_PASSWORD in the VibeCR environment or run: opencode serve --port 4096`
+        )
       });
     }
-    res.status(404).json({ error: 'Nie znaleziono działającego serwera OpenCode. Uruchom: opencode serve --port 4096' });
+    throw httpError(404, msg(
+      lang,
+      'Nie znaleziono działającego serwera OpenCode. Uruchom: opencode serve --port 4096',
+      'No running OpenCode server found. Start: opencode serve --port 4096'
+    ));
   } catch (err) {
-    res.status(500).json({ error: `Błąd wykrywania OpenCode: ${err.message}` });
+    if (err.expose) throw err;
+    throw httpError(500, msg(lang, `Błąd wykrywania OpenCode: ${err.message}`, `OpenCode detection error: ${err.message}`));
   }
-});
+}));
 
-// ── Zarządzanie lokalnym serwerem OpenCode (opcjonalne, na żądanie) ──────────
-// Pozwala ominąć problem losowego hasła sidecara aplikacji desktop: startujemy
-// własny serwer bez Basic auth. Korzysta z tej samej konfiguracji OpenCode,
-// więc logowanie do dostawców (w tym OAuth/SSO) działa tak samo.
 let managedOpenCode = null;
 
 function findOpenCodeBinary() {
@@ -120,23 +137,40 @@ function findOpenCodeBinary() {
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) return candidate;
   }
-  return 'opencode'; // fallback: ze zmiennej PATH
+  return 'opencode';
 }
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Start lokalnego serwera OpenCode na porcie 4096 (bez hasła) i oczekiwanie na health
-router.post('/opencode-start', async (req, res) => {
+router.post('/opencode-start', asyncHandler(async (req, res) => {
+  const lang = req.body && req.body.lang === 'en' ? 'en' : 'pl';
   const port = 4096;
+  const envPassword = process.env.OPENCODE_SERVER_PASSWORD || '';
+  const username = process.env.OPENCODE_SERVER_USERNAME || 'opencode';
   try {
-    if (await probeOpenCode(port, '') === 'ok') {
+    const openProbe = await probeOpenCode(port, envPassword, username);
+    if (openProbe === 'ok') {
       return res.json({ baseUrl: `http://127.0.0.1:${port}`, alreadyRunning: true });
+    }
+    if (openProbe === 'auth' || (await probeOpenCode(port, '', username)) === 'auth') {
+      throw httpError(409, msg(
+        lang,
+        `Port ${port} jest zajęty przez OpenCode wymagający hasła. Ustaw OPENCODE_SERVER_PASSWORD albo zatrzymaj ten proces.`,
+        `Port ${port} is occupied by an OpenCode instance that requires a password. Set OPENCODE_SERVER_PASSWORD or stop that process.`
+      ));
+    }
+    const busy = await probeOpenCode(port, '', username);
+    if (busy !== 'no' && busy !== 'ok') {
+      throw httpError(409, msg(
+        lang,
+        `Port ${port} jest zajęty. Zatrzymaj istniejący proces albo użyj wykrytego serwera.`,
+        `Port ${port} is busy. Stop the existing process or use the detected server.`
+      ));
     }
 
     if (!managedOpenCode) {
       const bin = findOpenCodeBinary();
       const env = { ...process.env };
-      // Bez hasła — żeby VibeCR mógł się połączyć bez znajomości OPENCODE_SERVER_PASSWORD
       delete env.OPENCODE_SERVER_PASSWORD;
       delete env.OPENCODE_SERVER_USERNAME;
 
@@ -156,41 +190,48 @@ router.post('/opencode-start', async (req, res) => {
 
     for (let i = 0; i < 40; i++) {
       if (managedOpenCode && managedOpenCode.spawnError) {
-        return res.status(500).json({
-          error: `Nie znaleziono polecenia "opencode" (${managedOpenCode.spawnError.message}). Uruchom ręcznie: opencode serve --port 4096`
-        });
+        throw httpError(500, msg(
+          lang,
+          `Nie znaleziono polecenia "opencode" (${managedOpenCode.spawnError.message}). Uruchom ręcznie: opencode serve --port 4096`,
+          `Could not find "opencode" (${managedOpenCode.spawnError.message}). Run manually: opencode serve --port 4096`
+        ));
       }
       if (await probeOpenCode(port, '') === 'ok') {
         return res.json({ baseUrl: `http://127.0.0.1:${port}`, started: true });
       }
       await delay(500);
     }
-    res.status(504).json({ error: 'Serwer OpenCode nie wystartował w 20 s. Spróbuj ręcznie: opencode serve --port 4096' });
+    throw httpError(504, msg(
+      lang,
+      'Serwer OpenCode nie wystartował w 20 s. Spróbuj ręcznie: opencode serve --port 4096',
+      'OpenCode server did not start within 20 s. Try manually: opencode serve --port 4096'
+    ));
   } catch (err) {
-    res.status(500).json({ error: `Błąd uruchamiania OpenCode: ${err.message}` });
+    if (err.expose) throw err;
+    throw httpError(500, msg(lang, `Błąd uruchamiania OpenCode: ${err.message}`, `OpenCode start error: ${err.message}`));
   }
-});
+}));
 
-// Zatrzymanie serwera uruchomionego przez VibeCR
 router.post('/opencode-stop', (req, res) => {
   if (managedOpenCode) {
-    try { managedOpenCode.kill(); } catch (e) { /* ignoruj */ }
+    try { managedOpenCode.kill(); } catch { void 0; }
     managedOpenCode = null;
     return res.json({ stopped: true });
   }
   res.json({ stopped: false, note: 'VibeCR nie uruchamiał tego serwera.' });
 });
 
-// Status lokalnego serwera OpenCode
-router.get('/opencode-status', async (req, res) => {
-  const running = (await probeOpenCode(4096, '')) === 'ok';
+router.get('/opencode-status', asyncHandler(async (req, res) => {
+  const envPassword = process.env.OPENCODE_SERVER_PASSWORD || '';
+  const username = process.env.OPENCODE_SERVER_USERNAME || 'opencode';
+  const running = (await probeOpenCode(4096, envPassword, username)) === 'ok'
+    || (await probeOpenCode(4096, '', username)) === 'ok';
   res.json({ running, managed: !!managedOpenCode, baseUrl: running ? 'http://127.0.0.1:4096' : null });
-});
+}));
 
-// Sprzątanie: nie zostawiamy osieroconego serwera OpenCode po zamknięciu VibeCR
 function shutdown() {
   if (managedOpenCode) {
-    try { managedOpenCode.kill(); } catch (e) { /* ignoruj */ }
+    try { managedOpenCode.kill(); } catch { void 0; }
     managedOpenCode = null;
   }
 }

@@ -1,7 +1,7 @@
 const fs = require('fs');
+const fsp = require('fs/promises');
 const path = require('path');
 
-// Rozszerzenia plików źródłowych, które analizujemy (uniwersalnie: dowolny język/framework)
 const SOURCE_EXTS = new Set([
   '.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx', '.vue', '.svelte',
   '.html', '.htm', '.css', '.scss', '.sass', '.less',
@@ -11,26 +11,20 @@ const SOURCE_EXTS = new Set([
   '.yml', '.yaml', '.json', '.toml', '.ini', '.conf'
 ]);
 
-// Pliki, które pomijamy mimo pasującego rozszerzenia (locki, zależności generowane)
 const LOCK_FILES = new Set([
   'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lockb', 'composer.lock',
   'poetry.lock', 'cargo.lock', 'gemfile.lock', 'npm-shrinkwrap.json'
 ]);
 
-// Górny limit rozmiaru pliku (chroni przed czytaniem binariów / wygenerowanych monolitów)
 const MAX_FILE_SIZE = 400 * 1024;
-
-// Domyślny próg linii dla reguły "duży plik" w analizie jakościowej
 const DEFAULT_LARGE_FILE_LINES = 400;
 
-// Katalogi pomijane podczas rekurencyjnego skanowania
 const IGNORED_DIRS = [
   'node_modules', '.git', 'dist', 'build', '.next', 'coverage',
   '.nuxt', '.svelte-kit', 'vendor', 'target', '__pycache__', '.venv', 'venv',
   'out', '.output', 'storybook-static', 'generated', 'gen', 'docs'
 ];
 
-// Dodatkowe maski katalogów do pominięcia wg nazwy ścieżki (normalizacja /)
 const IGNORED_PATH_FRAGMENTS = [
   '/dist/',
   '/build/',
@@ -52,51 +46,65 @@ function pathHasIgnoredFragment(p) {
   return IGNORED_PATH_FRAGMENTS.some((f) => normalized.includes(f));
 }
 
-// Czy plik nadaje się do analizy (rozszerzenie + brak locków/minified + rozsądny rozmiar)
-function isAnalyzableFile(fullPath) {
+async function isAnalyzableFile(fullPath) {
   const name = path.basename(fullPath).toLowerCase();
   if (LOCK_FILES.has(name)) return false;
   if (/\.min\.(js|css)$/.test(name)) return false;
   if (!SOURCE_EXTS.has(path.extname(fullPath).toLowerCase())) return false;
   try {
     if (pathHasIgnoredFragment(fullPath)) return false;
-    return fs.statSync(fullPath).size <= MAX_FILE_SIZE;
-  } catch (e) {
+    const st = await fsp.lstat(fullPath);
+    if (st.isSymbolicLink() || !st.isFile()) return false;
+    return st.size <= MAX_FILE_SIZE;
+  } catch {
     return false;
   }
 }
 
-// Rekurencyjne skanowanie plików projektu (z pominięciem node_modules, .git, dist, build).
-// Odporny na błędy: nieczytelne katalogi/pliki są pomijane zamiast przerywać analizę.
-function getProjectFiles(dirPath, arrayOfFiles = []) {
-  let files;
+function isAnalyzableFileSync(fullPath) {
+  const name = path.basename(fullPath).toLowerCase();
+  if (LOCK_FILES.has(name)) return false;
+  if (/\.min\.(js|css)$/.test(name)) return false;
+  if (!SOURCE_EXTS.has(path.extname(fullPath).toLowerCase())) return false;
   try {
-    files = fs.readdirSync(dirPath);
-  } catch (e) {
-    return arrayOfFiles; // brak uprawnień / usunięty katalog — pomijamy
+    if (pathHasIgnoredFragment(fullPath)) return false;
+    const st = fs.lstatSync(fullPath);
+    if (st.isSymbolicLink() || !st.isFile()) return false;
+    return st.size <= MAX_FILE_SIZE;
+  } catch {
+    return false;
+  }
+}
+
+async function getProjectFiles(dirPath, arrayOfFiles = []) {
+  let entries;
+  try {
+    entries = await fsp.readdir(dirPath, { withFileTypes: true });
+  } catch {
+    return arrayOfFiles;
   }
 
-  files.forEach((file) => {
-    const fullPath = path.join(dirPath, file);
-    let stat;
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name);
+    let st;
     try {
-      stat = fs.statSync(fullPath);
-    } catch (e) {
-      return; // np. zerwane dowiązanie symboliczne
+      st = await fsp.lstat(fullPath);
+    } catch {
+      continue;
     }
-      if (stat.isDirectory()) {
-        if (!IGNORED_DIRS.includes(file) && !pathHasIgnoredFragment(fullPath)) {
-          getProjectFiles(fullPath, arrayOfFiles);
-        }
-      } else if (isAnalyzableFile(fullPath)) {
+    if (st.isSymbolicLink()) continue;
+    if (st.isDirectory()) {
+      if (!IGNORED_DIRS.includes(entry.name) && !pathHasIgnoredFragment(fullPath)) {
+        await getProjectFiles(fullPath, arrayOfFiles);
+      }
+    } else if (st.isFile() && await isAnalyzableFile(fullPath)) {
       arrayOfFiles.push(fullPath);
     }
-  });
+  }
 
   return arrayOfFiles;
 }
 
-// Wykrywanie plików testowych (*.test.*, *.spec.*, katalogi testowe)
 function isTestFile(filePath) {
   const normalized = filePath.replace(/\\/g, '/').toLowerCase();
   return (
@@ -114,6 +122,7 @@ module.exports = {
   IGNORED_PATH_FRAGMENTS,
   pathHasIgnoredFragment,
   isAnalyzableFile,
+  isAnalyzableFileSync,
   getProjectFiles,
   isTestFile
 };

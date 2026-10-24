@@ -1,15 +1,19 @@
 import { state } from './state.js';
 
+async function fetchLocaleJson(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
 export async function loadLocale(lang) {
   if (lang === 'en') {
     try {
-      const res = await fetch('/i18n/en.json');
-      return await res.json();
+      return await fetchLocaleJson('/i18n/en.json');
     } catch { return {}; }
   }
   try {
-    const res = await fetch('/i18n/pl.json');
-    return await res.json();
+    return await fetchLocaleJson('/i18n/pl.json');
   } catch { return {}; }
 }
 

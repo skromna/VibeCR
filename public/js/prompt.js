@@ -51,7 +51,7 @@ Security & correctness checklist (scan EVERY file; report each real hit — do N
 - Race-prone IDs (e.g. array.length + 1 after await)
 - Loose == on ids; pagination off-by-one (hasMore with <=)
 - console.log of PII / request bodies / URLs with secrets
-- Dead stubs (TODO rate limit that always returns true)
+- Dead / unimplemented flood-protection stubs (always-allow)
 - Undeclared identifiers / typos that throw ReferenceError
 - fetch/res.json without res.ok; localStorage without try/catch
 
@@ -112,7 +112,7 @@ Checklist bezpieczeństwa i poprawności (przejrzyj KAŻDY plik; zgłoś każde 
 - ID podatne na wyścig (np. array.length + 1 po await)
 - Luźne == przy id; off-by-one w paginacji (hasMore z <=)
 - console.log z PII / body żądania / URL z danymi wrażliwymi
-- Martwe stuby (TODO rate limit zawsze zwracający true)
+- Martwe / niedokończone stuby ochrony przed floodem (zawsze przepuszczają)
 - Niezadeklarowane identyfikatory / literówki → ReferenceError
 - fetch/res.json bez res.ok; localStorage bez try/catch
 
@@ -177,65 +177,24 @@ export function buildReviewPrompt(files, lang = 'pl', reviewOpts = {}) {
     ? `- For oversized files, use ~${threshold} lines as the team threshold when suggesting a split.${reviewOpts.largeFileSkipCss ? ' Do NOT suggest splitting .css/.scss/.sass/.less files based on size alone.' : ''}`
     : `- Przy zbyt dużych plikach stosuj próg ok. ${threshold} linii jako próg zespołu przy sugestii podziału.${reviewOpts.largeFileSkipCss ? ' NIE sugeruj podziału plików .css/.scss/.sass/.less wyłącznie ze względu na rozmiar.' : ''}`;
   const standardsBlock = formatStandardsForPrompt(reviewOpts.customStandards || '', lang);
+  const securityExtras = typeof reviewOpts.securityPromptExtras === 'string'
+    ? reviewOpts.securityPromptExtras.trim()
+    : '';
 
   const custom = sanitizeBasePrompt(reviewOpts.basePrompt || '');
   const template = custom || getDefaultBasePrompt(lang);
 
-  return applyTemplate(template, {
+  let prompt = applyTemplate(template, {
     LANGUAGE_NAME: languageName,
     FILE_HEADER_NOTE: fileHeaderNote,
     QUALITY_EXTRA: qualityExtra,
     STANDARDS_BLOCK: standardsBlock,
     FILES_BLOCK: filesBlock
   });
+  if (securityExtras) {
+    prompt += `\n\n${securityExtras}`;
+  }
+  return prompt;
 }
 
-export function extractJSON(text) {
-  const cleaned = text.replace(/```json/gi, '').replace(/```/g, '').trim();
-  const start = cleaned.indexOf('{');
-  const end = cleaned.lastIndexOf('}');
-  if (start === -1 || end === -1) {
-    const lang = typeof document !== 'undefined' && document.documentElement.getAttribute('lang') === 'en'
-      ? 'en'
-      : 'pl';
-    throw new Error(lang === 'en'
-      ? 'Model response does not contain JSON.'
-      : 'Odpowiedź modelu nie zawiera JSON.');
-  }
-  return JSON.parse(cleaned.slice(start, end + 1));
-}
-
-export function normalizeAIResult(raw) {
-  const result = { critical: [], framework: [], runtime: [], quality: [], stack: { languages: [], frameworks: [] } };
-
-  const cleanList = (v) => Array.isArray(v)
-    ? v.filter((x) => typeof x === 'string' && x.trim()).map((x) => x.trim().slice(0, 40)).slice(0, 20)
-    : [];
-  if (raw.stack && typeof raw.stack === 'object') {
-    result.stack.languages = cleanList(raw.stack.languages);
-    result.stack.frameworks = cleanList(raw.stack.frameworks);
-  }
-
-  const keys = [
-    ['critical', raw.critical, Infinity],
-    ['framework', raw.framework || raw.react, 25],
-    ['runtime', raw.runtime || raw.node, 25],
-    ['quality', raw.quality, 25]
-  ];
-  for (const [cat, arr, max] of keys) {
-    if (!Array.isArray(arr)) continue;
-    const items = Number.isFinite(max) ? arr.slice(0, max) : arr;
-    for (const item of items) {
-      if (item && item.title && item.file) {
-        result[cat].push({
-          file: String(item.file),
-          title: String(item.title).slice(0, 300),
-          description: String(item.description || '').slice(0, 1000),
-          fix: String(item.fix || '').slice(0, 4000),
-          source: 'ai'
-        });
-      }
-    }
-  }
-  return result;
-}
+export { extractJSON, normalizeAIResult } from './ai-parse.js';

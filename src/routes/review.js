@@ -1,19 +1,22 @@
 const express = require('express');
 const fs = require('fs');
+const fsp = require('fs/promises');
 const path = require('path');
 const { runGit, isGitRepo, collectFiles } = require('../lib/git');
 const { analyzeFileContent } = require('../lib/analysis');
 const { detectStack } = require('../lib/stack');
 const { normalizeReviewOptions } = require('../lib/standards');
+const { asyncHandler, httpError } = require('../lib/asyncHandler');
 
 const router = express.Router();
 
-// Wykrywanie aktualnego brancha i liczby zmian po wklejeniu ścieżki.
-// Działa również dla folderów bez Git (zwraca isRepo: false).
 router.post('/git-info', (req, res) => {
   const { repoPath } = req.body;
+  const lang = req.body && req.body.lang === 'en' ? 'en' : 'pl';
   if (!repoPath || !fs.existsSync(repoPath)) {
-    return res.status(400).json({ error: 'Podana ścieżka nie istnieje na dysku.' });
+    return res.status(400).json({
+      error: lang === 'en' ? 'The given path does not exist on disk.' : 'Podana ścieżka nie istnieje na dysku.'
+    });
   }
 
   if (!isGitRepo(repoPath)) {
@@ -26,20 +29,18 @@ router.post('/git-info', (req, res) => {
     const modifiedCount = statusOutput ? statusOutput.split('\n').length : 0;
 
     res.json({ isRepo: true, currentBranch, modifiedCount });
-  } catch (err) {
-    // Folder jest repo, ale np. bez commitów (HEAD nie istnieje) — nadal można skanować
+  } catch {
     res.json({ isRepo: true, currentBranch: null, modifiedCount: 0 });
   }
 });
 
-// Główne skanowanie heurystyczne (git diff lub cała aplikacja)
-router.post('/review', (req, res) => {
+router.post('/review', asyncHandler(async (req, res) => {
   const { repoPath, scope, compareBranch, includeTests } = req.body;
   const reviewOpts = normalizeReviewOptions(req.body);
   const uiLang = reviewOpts.lang;
 
   if (!repoPath || !fs.existsSync(repoPath)) {
-    return res.status(400).json({ error: uiLang === 'en' ? 'Invalid local path.' : 'Nieprawidłowa ścieżka lokalna.' });
+    throw httpError(400, uiLang === 'en' ? 'Invalid local path.' : 'Nieprawidłowa ścieżka lokalna.');
   }
 
   try {
@@ -48,11 +49,11 @@ router.post('/review', (req, res) => {
     if (isRepo) {
       try {
         currentBranch = runGit(repoPath, ['rev-parse', '--abbrev-ref', 'HEAD']);
-      } catch (e) {
+      } catch {
         currentBranch = null;
       }
     }
-    const filesToAnalyze = collectFiles(repoPath, scope, compareBranch, includeTests);
+    const filesToAnalyze = await collectFiles(repoPath, scope, compareBranch, includeTests, uiLang);
 
     const report = {
       isRepo,
@@ -65,12 +66,12 @@ router.post('/review', (req, res) => {
       quality: []
     };
 
-    filesToAnalyze.forEach((filePath) => {
+    for (const filePath of filesToAnalyze) {
       let content;
       try {
-        content = fs.readFileSync(filePath, 'utf-8');
-      } catch (e) {
-        return;
+        content = await fsp.readFile(filePath, 'utf-8');
+      } catch {
+        continue;
       }
       const fileIssues = analyzeFileContent(filePath, content, {
         largeFileLines: reviewOpts.largeFileLines,
@@ -81,48 +82,53 @@ router.post('/review', (req, res) => {
       report.framework.push(...fileIssues.framework);
       report.runtime.push(...fileIssues.runtime);
       report.quality.push(...fileIssues.quality);
-    });
+    }
 
     res.json(report);
   } catch (err) {
+    if (err.expose) throw err;
     const prefix = uiLang === 'en' ? 'Analysis error: ' : 'Błąd podczas analizy: ';
-    res.status(err.statusCode || 500).json({ error: `${prefix}${err.message}` });
+    throw httpError(err.statusCode || 500, `${prefix}${err.message}`);
   }
-});
+}));
 
-// Zawartość plików do analizy AI (limit: 40 plików x 15 000 znaków).
-// Treść trafia tylko do przeglądarki, która wysyła ją DIREKTNIE do wybranego
-// dostawcy AI — klucz API i kod nigdy nie przechodzą przez ten serwer.
-router.post('/files', (req, res) => {
+router.post('/files', asyncHandler(async (req, res) => {
   const { repoPath, scope, compareBranch, includeTests } = req.body;
+  const reviewOpts = normalizeReviewOptions(req.body);
+  const uiLang = reviewOpts.lang;
 
   if (!repoPath || !fs.existsSync(repoPath)) {
-    return res.status(400).json({ error: 'Nieprawidłowa ścieżka lokalna.' });
+    throw httpError(400, uiLang === 'en' ? 'Invalid local path.' : 'Nieprawidłowa ścieżka lokalna.');
   }
 
   try {
-    const filesToAnalyze = collectFiles(repoPath, scope, compareBranch, includeTests);
+    const filesToAnalyze = await collectFiles(repoPath, scope, compareBranch, includeTests, uiLang);
 
     const MAX_FILES = 40;
     const MAX_CHARS = 15000;
+    const unread = uiLang === 'en' ? '/* unreadable file — skipped */' : '/* nieczytelny plik — pominięto */';
+    const truncatedMark = uiLang === 'en' ? '\n/* ... truncated */' : '\n/* ... skrócone */';
 
-    const files = filesToAnalyze.slice(0, MAX_FILES).map((filePath) => {
+    const slice = filesToAnalyze.slice(0, MAX_FILES);
+    const files = await Promise.all(slice.map(async (filePath) => {
       let content;
       try {
-        content = fs.readFileSync(filePath, 'utf-8');
-      } catch (e) {
-        content = '/* nieczytelny plik — pominięto */';
+        content = await fsp.readFile(filePath, 'utf-8');
+      } catch {
+        content = unread;
       }
       return {
         path: path.relative(repoPath, filePath).split(path.sep).join('/'),
-        content: content.length > MAX_CHARS ? content.slice(0, MAX_CHARS) + '\n/* ... skrócone */' : content
+        content: content.length > MAX_CHARS ? content.slice(0, MAX_CHARS) + truncatedMark : content
       };
-    });
+    }));
 
     res.json({ files, totalFiles: filesToAnalyze.length, truncated: filesToAnalyze.length > MAX_FILES });
   } catch (err) {
-    res.status(err.statusCode || 500).json({ error: `Błąd podczas zbierania plików: ${err.message}` });
+    if (err.expose) throw err;
+    const prefix = uiLang === 'en' ? 'Error collecting files: ' : 'Błąd podczas zbierania plików: ';
+    throw httpError(err.statusCode || 500, `${prefix}${err.message}`);
   }
-});
+}));
 
 module.exports = router;

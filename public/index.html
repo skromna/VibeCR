@@ -184,6 +184,15 @@
               <input type="checkbox" id="useAIInput" />
               <span><span data-i18n="ai.useAI">Uzupełnij raport analizą AI</span> <span class="field-hint" data-i18n="ai.useAIHint">(kod trafi do wybranego dostawcy)</span></span>
             </label>
+            <label class="option-row" style="margin-top: 8px;">
+              <input type="checkbox" id="useSecurityAuditInput" />
+              <span><span data-i18n="securityAudit.use">Audyt bezpieczeństwa (Cloudflare attack classes)</span> <span class="field-hint" data-i18n="securityAudit.useHint">(wymaga AI; metodyka MIT security-audit-skill)</span></span>
+            </label>
+            <div class="flex gap-s5 items-center" style="margin-top: 10px; flex-wrap: wrap;">
+              <button type="button" id="importFindingsBtn" class="btn btn-subtle" style="font-size: 12px; padding: 5px 10px;" data-i18n="securityAudit.import">Import findings.json</button>
+              <input id="importFindingsFile" type="file" accept="application/json,.json" style="display: none;" />
+              <span id="findingsImportStatus" class="field-hint"></span>
+            </div>
             <p class="ai-note" data-i18n-html="ai.note">
               Konfiguracja (w tym klucz API) zapisywana jest wyłącznie w <code>localStorage</code> tej przeglądarki.
               Żądania do dostawcy przechodzą przez lokalny serwer VibeCR na tym komputerze (omija blokady przeglądarki)

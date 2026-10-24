@@ -56,13 +56,13 @@ export function loadProjectsLocal() {
 }
 
 export function saveProjectsLocal(list) {
-  localStorage.setItem(PROJECTS_KEY, JSON.stringify(list));
+  try {
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(list));
+  } catch {
+    void 0;
+  }
 }
 
-// =====================================================================
-// Konfiguracja AI — WYŁĄCZNIE w localStorage; zapytania idą
-// z przeglądarki DIREKTNIE do dostawcy (bez pośrednictwa serwera)
-// =====================================================================
 export const LLM_KEY = 'vibecr.llm';
 export const LEGACY_LLM_KEY = 'gitvibe.llm';
 
@@ -108,7 +108,7 @@ export const LLM_PRESETS = {
   },
   opencode: {
     baseUrl: 'http://127.0.0.1:4096',
-    model: '',
+    model: 'opencode/deepseek-v4.1-flash-free',
     needKey: false
   },
   ollama: {
@@ -137,6 +137,12 @@ export function loadLLMConfig() {
     if (config.provider === 'gemini' && config.model === 'gemini-2.5-flash') {
       config.model = LLM_PRESETS.gemini.model;
     }
+    if (config.provider === 'opencode') {
+      const model = String(config.model || '').trim();
+      if (!model || /glm-4-9b/i.test(model)) {
+        config.model = LLM_PRESETS.opencode.model;
+      }
+    }
     return config;
   } catch { return { provider: 'gemini', baseUrl: '', apiKey: '', model: '', useAI: false }; }
 }
@@ -149,6 +155,10 @@ export function saveLLMConfig() {
     model: $('llmModel').value.trim(),
     useAI: $('useAIInput').checked
   };
-  localStorage.setItem(LLM_KEY, JSON.stringify(config));
+  try {
+    localStorage.setItem(LLM_KEY, JSON.stringify(config));
+  } catch {
+    void 0;
+  }
   return config;
 }

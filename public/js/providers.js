@@ -88,21 +88,11 @@ export async function resolveOpenCodeBaseUrl(config) {
       body: JSON.stringify({ password: config.apiKey || '' })
     });
     const data = await res.json();
-    const canUse = !!data.baseUrl && (!data.authRequired || data.password);
+    const canUse = !!data.baseUrl && (!data.authRequired || data.passwordProvided || !!config.apiKey);
     if (canUse) {
       $('llmBaseUrl').value = data.baseUrl;
       config.baseUrl = data.baseUrl;
     }
-    if (typeof data.password === 'string' && (data.password || !data.authRequired)) {
-      // Backend odczytał hasło z lokalnego środowiska (OPENCODE_SERVER_PASSWORD)
-      const key = data.username && data.username !== 'opencode' ? `${data.username}:${data.password}` : data.password;
-      $('llmApiKey').value = key;
-      config.apiKey = key;
-      saveLLMConfig();
-      return Object.assign({}, data, { appliedPassword: true });
-    }
-    // Znaleziono tylko serwer wymagający hasła, którego nie znamy — nie nadpisujemy pola,
-    // żeby użytkownik nie stracił wpisanego portu, i zwracamy czytelny powód.
     if (data.error && !canUse) return { error: data.error };
     return data;
   } catch (err) {
@@ -151,9 +141,44 @@ export async function refreshOpenCodeModels() {
   }
 }
 
-// Natywne API lokalnego serwera OpenCode (opencode serve): sesja -> prompt -> odpowiedź
+function resolveOpenCodeModel(config) {
+  const raw = String(config.model || '').trim();
+  if (!raw) return null;
+  if (raw.includes('/')) {
+    const slash = raw.indexOf('/');
+    return {
+      providerID: raw.slice(0, slash),
+      modelID: raw.slice(slash + 1)
+    };
+  }
+  return { providerID: 'opencode', modelID: raw };
+}
+
+function openCodeErrorMessage(data, status, fallbackKey) {
+  if (data && typeof data === 'object') {
+    const raw = data.error?.message
+      || data.data?.message
+      || data.message
+      || '';
+    const text = String(raw || '');
+    const named = data.name ? `${data.name}: ${text}` : text;
+    if (/foreign key constraint|session_message\.seq|Failed query: insert into/i.test(text)
+      || /unexpected server error|check server logs/i.test(text)
+      || data.name === 'UnknownError') {
+      return t('errors.opencodeServerBug', { detail: named || `HTTP ${status}` });
+    }
+    if (named) return named;
+  }
+  return t(fallbackKey || 'errors.opencodeHttpPrompt', { status });
+}
+
 export async function openCodeReview(config, prompt) {
   const headers = openCodeHeaders(config);
+  const model = resolveOpenCodeModel(config);
+  if (!model || !model.providerID || !model.modelID) {
+    throw new Error(t('errors.opencodeNeedModel'));
+  }
+
   const sRes = await llmFetch(`${config.baseUrl}/session`, {
     method: 'POST',
     headers,
@@ -162,39 +187,34 @@ export async function openCodeReview(config, prompt) {
   const session = await readJson(sRes, 'OpenCode (tworzenie sesji)');
   if (!sRes.ok) {
     const hint = sRes.status === 401 || sRes.status === 403 ? t('errors.opencodePasswordHint') : '';
-    throw new Error(session?.error?.message
-      ? `${session.error.message}${hint}`
-      : t('errors.opencodeHttpSession', { status: sRes.status, hint }));
+    throw new Error(`${openCodeErrorMessage(session, sRes.status, 'errors.opencodeHttpSession')}${hint}`);
   }
 
-  try {
-    const body = { parts: [{ type: 'text', text: prompt }] };
-    if (config.model && config.model.includes('/')) {
-      const slash = config.model.indexOf('/');
-      body.model = { providerID: config.model.slice(0, slash), modelID: config.model.slice(slash + 1) };
-    }
-    const mRes = await llmFetch(`${config.baseUrl}/session/${session.id}/message`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body)
-    });
-    const data = await readJson(mRes, 'OpenCode (analiza)');
-    if (!mRes.ok) throw new Error(data?.error?.message || t('errors.opencodeHttpPrompt', { status: mRes.status }));
-    if (data.info && data.info.error) {
-      const err = data.info.error;
-      throw new Error(t('errors.opencodeModelError', {
-        message: err.data?.message || err.name || t('errors.opencodeModelFallback')
-      }));
-    }
-    const text = (data.parts || []).filter((p) => p.type === 'text').map((p) => p.text || '').join('');
-    if (!text.trim()) {
-      throw new Error(t('errors.opencodeNoContent'));
-    }
-    return text;
-  } finally {
-    // Sprzątnięcie sesji po analizie (niezależnie od wyniku)
-    llmFetch(`${config.baseUrl}/session/${session.id}`, { method: 'DELETE', headers }).catch(() => {});
+  const body = {
+    parts: [{ type: 'text', text: prompt }],
+    model,
+    agent: 'plan'
+  };
+  const mRes = await llmFetch(`${config.baseUrl}/session/${session.id}/message`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body)
+  });
+  const data = await readJson(mRes, 'OpenCode (analiza)');
+  if (!mRes.ok) {
+    throw new Error(openCodeErrorMessage(data, mRes.status));
   }
+  if (data.info && data.info.error) {
+    const err = data.info.error;
+    throw new Error(t('errors.opencodeModelError', {
+      message: err.data?.message || err.name || t('errors.opencodeModelFallback')
+    }));
+  }
+  const text = (data.parts || []).filter((p) => p.type === 'text').map((p) => p.text || '').join('');
+  if (!text.trim()) {
+    throw new Error(t('errors.opencodeNoContent'));
+  }
+  return text;
 }
 
 // Buduje poprawny adres generateContent, odporny na: brakujące /v1(beta) w Base URL,

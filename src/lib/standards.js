@@ -1,13 +1,10 @@
-const MAX_CUSTOM_STANDARDS = 2000;
+const path = require('path');
 
-const INJECTION_PATTERNS = [
-  /\b(ignore|disregard|forget)\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|rules?)\b/gi,
-  /\b(system|assistant|developer)\s*:\s*/gi,
-  /\bdo\s+not\s+follow\s+(the\s+)?(system|user)\b/gi,
-  /\b(override|bypass)\s+(all\s+)?(safety|rules?|instructions?)\b/gi,
-  /\bignoruj\s+(wszystkie\s+)?(poprzednie\s+)?(instrukcje|polecenia|zasady)\b/gi,
-  /\b(nie\s+stosuj|pomijaj)\s+(systemowych\s+)?(instrukcji|zasad)\b/gi
-];
+const MAX_CUSTOM_STANDARDS = 2000;
+const MAX_BASE_PROMPT = 30000;
+
+const patternDefs = require(path.join(__dirname, '..', '..', 'shared', 'injection-patterns.json'));
+const INJECTION_PATTERNS = patternDefs.map((p) => new RegExp(p.pattern, p.flags));
 
 function sanitizeCustomStandards(input) {
   if (typeof input !== 'string') return '';
@@ -21,6 +18,15 @@ function sanitizeCustomStandards(input) {
   }
   s = s.replace(/\n{3,}/g, '\n\n');
   return s.slice(0, MAX_CUSTOM_STANDARDS).trim();
+}
+
+function sanitizeBasePrompt(input) {
+  if (typeof input !== 'string') return '';
+  let s = input.normalize('NFC');
+  s = s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
+  s = s.replace(/[\u200B-\u200D\u202A-\u202E\u2060\uFEFF]/g, '');
+  s = s.replace(/\n{4,}/g, '\n\n\n');
+  return s.slice(0, MAX_BASE_PROMPT).trim();
 }
 
 function normalizeReviewOptions(body) {
@@ -40,6 +46,8 @@ function normalizeReviewOptions(body) {
 
 module.exports = {
   MAX_CUSTOM_STANDARDS,
+  MAX_BASE_PROMPT,
   sanitizeCustomStandards,
+  sanitizeBasePrompt,
   normalizeReviewOptions
 };

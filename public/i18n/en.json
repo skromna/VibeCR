@@ -102,6 +102,16 @@
     "providerOllama": "Ollama (local)",
     "providerLmstudio": "LM Studio (local)"
   },
+  "securityAudit": {
+    "use": "Security audit (Cloudflare attack classes)",
+    "useHint": "(requires AI; MIT security-audit-skill methodology)",
+    "import": "Import findings.json",
+    "importOk": "Imported CF findings: critical {critical}, quality {quality}, rejected {rejected}.",
+    "importSoft": "Imported with validation warnings (soft-map).",
+    "importFailed": "Findings import failed: {error}",
+    "statusRunning": "Security AI audit...",
+    "added": " | Security CF ({model}): +{count} findings from {files} files{soft}"
+  },
   "actions": {
     "run": "Run code analysis",
     "restore": "Restore removed",
@@ -127,6 +137,9 @@
     "copied": "Copied!",
     "copyFixTitle": "Copy fix",
     "heuristic": "heuristic",
+    "badgeCf": "CF",
+    "badgeVerify": "verify",
+    "badgeHardening": "hardening",
     "stack": "Detected stack: {languages}{frameworks}",
     "stackUnknown": "unknown",
     "stackFrameworks": " | frameworks: {list}",
@@ -205,6 +218,8 @@
     "opencodeNoContent": "OpenCode returned no content — check that a working model/provider is selected in OpenCode.",
     "opencodeHttpSession": "OpenCode HTTP {status} while creating session{hint}",
     "opencodeHttpPrompt": "OpenCode HTTP {status} on prompt",
+    "opencodeNeedModel": "Pick an OpenCode model as provider/model (e.g. opencode/deepseek-v4.1-flash-free) — use “refresh from OpenCode”.",
+    "opencodeServerBug": "OpenCode crashed on /message ({detail}). Common causes: (1) deleting the session while a reply is still writing (FK), (2) old build / corrupt SQLite. VibeCR no longer deletes sessions mid-flight — hard-refresh (Ctrl+F5), pick a free model e.g. opencode/deepseek-v4.1-flash-free, and retry. If it persists: upgrade OpenCode ≥1.18, delete %USERPROFILE%\\.local\\share\\opencode\\opencode.db*, restart serve.",
     "opencodePasswordHint": " (invalid OPENCODE_SERVER_PASSWORD)",
     "opencodeModelError": "OpenCode: {message}",
     "opencodeModelFallback": "model error",
